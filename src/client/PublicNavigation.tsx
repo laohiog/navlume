@@ -1,0 +1,455 @@
+import { useState, type ReactNode } from 'react';
+
+import { FooterContent } from './FooterContent.js';
+import { LoginForm } from './LoginForm.js';
+import { filterCategoriesByQuery } from './navigation-search.js';
+import type { PublicBranding } from './api/admin-branding.js';
+import type {
+  PublicNavigation,
+  PublicNavigationCategory,
+  PublicNavigationLink,
+} from './api/public-navigation.js';
+
+/**
+ * Render state for the public homepage.
+ *
+ * Kept as an explicit discriminated union so each UI state can be rendered and
+ * tested independently of the data-loading hook.
+ *
+ * `unauthenticated` means the server rejected the request with 401 because the
+ * site is `login_required`; the client must not hold protected data in that case.
+ */
+export type PublicNavigationState =
+  | { status: 'loading' }
+  | { status: 'error' }
+  | { status: 'unauthenticated' }
+  | { status: 'ready'; data: PublicNavigation };
+
+/** Session summary for header rendering. */
+export interface SessionSummary {
+  /** True while Better Auth is still resolving the session. */
+  isPending: boolean;
+  /** Username when authenticated, otherwise null. */
+  username: string | null;
+}
+
+export interface PublicNavigationViewProps {
+  state: PublicNavigationState;
+  session: SessionSummary;
+  /** Whether the login form should be visible right now. */
+  isLoginVisible: boolean;
+  login: {
+    isSubmitting: boolean;
+    errorMessage: string | null;
+    onSubmit: (credentials: { username: string; password: string }) => Promise<void>;
+  };
+  /**
+   * Personal navigation section, rendered above public content for an
+   * authenticated visitor. `null` for guests, in which case nothing personal is
+   * rendered at all — the container never requests or holds personal data for a
+   * guest, so this is absence rather than a CSS hide.
+   */
+  personal: { view: ReactNode } | null;
+  /**
+   * Admin-only entry into Admin Management. `null` for guests and ordinary
+   * users, in which case no admin entry is rendered. Presentation only — every
+   * admin API route authorizes on the server, so this entry is a convenience,
+   * never a boundary.
+   */
+  adminEntry: { onOpenAdmin: () => void } | null;
+  /** Ordinary signed-in user's entry; data tools live outside Home. */
+  settingsEntry: { onOpenSettings: () => void } | null;
+  /**
+   * Branded site identity. The header, the login-required screen, and the footer
+   * all read from this one unauthenticated branding read, which is independent
+   * of navigation so a branding failure cannot break navigation and vice versa.
+   */
+  branding: PublicBranding;
+  /**
+   * Client-side search state. The query is owned by the container so it can span
+   * both the personal and public sections; this view filters public links and
+   * renders the shared input and no-results message.
+   */
+  search: {
+    query: string;
+    onChange: (query: string) => void;
+    /** True only once a resolved non-empty query matched nothing anywhere. */
+    showNoResults: boolean;
+  };
+  onLogout: () => void;
+  onShowLogin: () => void;
+  onHideLogin: () => void;
+}
+
+/**
+ * Client-side search control.
+ *
+ * A single plain input: no filters, sorting, suggestions, history, or command
+ * palette. It is an editable control, so the global paste Quick Add shortcut
+already ignores it (see `isEditableTarget`) and pasting here behaves normally.
+ */
+function SearchBar({
+  query,
+  onChange,
+}: {
+  query: string;
+  onChange: (query: string) => void;
+}) {
+  return (
+    <div className="search">
+      <label className="search__field">
+        <span className="search__label">搜索网址</span>
+        <input
+          className="search__input"
+          type="search"
+          name="search"
+          placeholder="输入名称或网址"
+          autoComplete="off"
+          value={query}
+          onChange={(event) => onChange(event.target.value)}
+        />
+      </label>
+    </div>
+  );
+}
+
+/** Shared destination recognition for both homepage grids; no metadata requests. */
+export function DestinationIcon({ title, iconUrl }: { title: string; iconUrl: string | null }) {
+  const [failedUrl, setFailedUrl] = useState<string | null>(null);
+  const canDisplay = iconUrl !== null && /^(https?:\/\/|\/(?!\/))/i.test(iconUrl);
+
+  return (
+    <span className="destination-icon" aria-hidden="true">
+      <span>{Array.from(title.trim())[0]?.toLocaleUpperCase() ?? '↗'}</span>
+      {canDisplay && iconUrl !== failedUrl ? (
+        <img
+          src={iconUrl}
+          alt=""
+          loading="lazy"
+          referrerPolicy="no-referrer"
+          onError={() => setFailedUrl(iconUrl)}
+        />
+      ) : null}
+    </span>
+  );
+}
+
+/** Display only: the destination itself always uses the original validated href. */
+export function DestinationHost({ url }: { url: string }) {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return '';
+  }
+}
+
+/** Category jumps keep the existing home/admin hash routing untouched. */
+export function CategoryNavigation({
+  categories,
+  headingPrefix,
+  label,
+}: {
+  categories: { id: number; name: string }[];
+  headingPrefix: string;
+  label: string;
+}) {
+  if (categories.length < 2) return null;
+
+  return (
+    <nav className="category-nav" aria-label={label}>
+      {categories.map((category) => (
+        <button
+          key={category.id}
+          className="category-nav__item"
+          type="button"
+          onClick={() => {
+            const heading = document.getElementById(`${headingPrefix}${category.id}`);
+            heading?.scrollIntoView({ block: 'start' });
+            heading?.focus({ preventScroll: true });
+          }}
+        >
+          {category.name}
+        </button>
+      ))}
+    </nav>
+  );
+}
+
+/** A single navigation link rendered as a native anchor. */
+function LinkCard({ link }: { link: PublicNavigationLink }) {
+  return (
+    <li className="link-card">
+      <a className="link-card__anchor" href={link.url} title={link.title} target="_blank" rel="noopener noreferrer">
+        <DestinationIcon title={link.title} iconUrl={link.iconUrl} />
+        <span className="destination-copy">
+          <span className="link-card__title">{link.title}</span>
+          <span className={link.description ? 'link-card__description' : 'destination-secondary'}>
+            {link.description || <DestinationHost url={link.url} />}
+          </span>
+        </span>
+      </a>
+    </li>
+  );
+}
+
+/** One public category with its visible links. */
+function CategorySection({ category }: { category: PublicNavigationCategory }) {
+  return (
+    <section className="category" aria-labelledby={`category-${category.id}`}>
+      <h3 className="category__title" id={`category-${category.id}`} tabIndex={-1}>
+        {category.name}
+      </h3>
+      <ul className="link-list">
+        {category.links.map((link) => (
+          <LinkCard key={link.id} link={link} />
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+/**
+ * Session indicator plus login/logout controls.
+ *
+ * `adminEntry` is present only for an admin and renders the 管理后台 action in
+ * the same header cluster. Exported because the Admin Management page reuses
+ * this exact header cluster.
+ */
+export function SessionBar({
+  session,
+  isAuthenticated,
+  isLoginVisible,
+  adminEntry,
+  settingsEntry,
+  onLogout,
+  onShowLogin,
+  onHideLogin,
+}: {
+  session: SessionSummary;
+  isAuthenticated: boolean;
+  isLoginVisible: boolean;
+  /** Present only for an admin. Presentation only; the server authorizes admin routes. */
+  adminEntry?: { onOpenAdmin: () => void } | null;
+  settingsEntry?: { onOpenSettings: () => void } | null;
+  onLogout: () => void;
+  onShowLogin: () => void;
+  onHideLogin: () => void;
+}) {
+  if (session.isPending) {
+    return (
+      <div className="session-bar">
+        <span className="session-bar__pending">…</span>
+      </div>
+    );
+  }
+
+  if (isAuthenticated) {
+    return (
+      <div className="session-bar">
+        <span className="session-bar__user">已登录：{session.username}</span>
+        {adminEntry ? (
+          <button
+            className="session-bar__button"
+            type="button"
+            onClick={adminEntry.onOpenAdmin}
+          >
+            管理后台
+          </button>
+        ) : null}
+        {settingsEntry ? (
+          <button className="session-bar__button" type="button" onClick={settingsEntry.onOpenSettings}>
+            个人设置
+          </button>
+        ) : null}
+        <button className="session-bar__button" type="button" onClick={onLogout}>
+          退出登录
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="session-bar">
+      <button
+        className="session-bar__button"
+        type="button"
+        onClick={isLoginVisible ? onHideLogin : onShowLogin}
+      >
+        {isLoginVisible ? '取消' : '登录'}
+      </button>
+    </div>
+  );
+}
+
+/**
+ * Branded site header: logo (when set), site name, and tagline.
+ *
+ * Branding comes from `/api/public/branding` rather than the navigation payload,
+ * which is what lets the same header render on the `login_required` login screen
+ * where no navigation is available. `siteName`, `tagline`, and `logoPath` are
+ * rendered as plain React text/attributes — never as HTML.
+ */
+export function BrandHeader({ branding }: { branding: PublicBranding }) {
+  return (
+    <div className="site-header__brand">
+      {branding.logoPath !== null ? (
+        <img className="site-header__logo" src={branding.logoPath} alt="" />
+      ) : null}
+      <div className="site-header__brand-text">
+        <h1 className="site-header__name">{branding.siteName}</h1>
+        {branding.tagline !== null && branding.tagline.length > 0 ? (
+          <p className="site-header__tagline">{branding.tagline}</p>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Presentational public homepage.
+ *
+ * Pure: it renders exactly the given props and performs no data fetching or
+ * session calls, which keeps it renderable in tests without a browser.
+ *
+ * Access enforcement is NOT performed here. The server decides via
+ * `site_settings.access_mode`; this component only reflects the outcome.
+ *
+ * Personal and public states are independent: a personal failure (or a public
+ * failure) never replaces the other section, and the personal section keeps its
+ * own loading/error text.
+ */
+export function PublicNavigationView({
+  state,
+  session,
+  isLoginVisible,
+  login,
+  personal,
+  adminEntry,
+  settingsEntry,
+  branding,
+  search,
+  onLogout,
+  onShowLogin,
+  onHideLogin,
+}: PublicNavigationViewProps) {
+  const isAuthenticated = session.username !== null;
+
+  // login_required and no valid session: show the login screen only.
+  // No navigation data is rendered, and none was accepted from the 401 response.
+  // Branding still renders, which is why it has its own unauthenticated read.
+  if (state.status === 'unauthenticated') {
+    return (
+      <div className="app app--home app--login-required">
+        <header className="site-header">
+          <BrandHeader branding={branding} />
+        </header>
+        <main className="content">
+          <LoginForm
+            title="请登录"
+            description="此站点的公共导航需要登录后查看。"
+            isSubmitting={login.isSubmitting}
+            errorMessage={login.errorMessage}
+            onSubmit={login.onSubmit}
+          />
+        </main>
+      </div>
+    );
+  }
+
+  const categories = state.status === 'ready' ? state.data.categories : null;
+
+  // Display only: empty categories have no destinations or useful jump targets.
+  const visibleCategories =
+    categories === null ? null : filterCategoriesByQuery(categories, search.query)
+      .filter((category) => category.links.length > 0);
+
+  /**
+   * The answer to the query: the public navigation projection plus its states.
+   *
+   * Extracted so the results markup stays in one place regardless of the states
+   * around it, without a second search implementation.
+   */
+  const navigationResults = visibleCategories?.length === 0 ? null : (
+    <section className="public-navigation" aria-labelledby="public-navigation-title">
+      <h2 className="public-navigation__title" id="public-navigation-title">
+        公共导航
+      </h2>
+      {state.status === 'loading' ? (
+        <p className="status" role="status">
+          正在加载公共导航…
+        </p>
+      ) : null}
+
+      {state.status === 'error' ? (
+        <p className="status status--error" role="alert">
+          公共导航暂时无法加载，请稍后重试。
+        </p>
+      ) : null}
+
+      <CategoryNavigation
+        categories={visibleCategories ?? []}
+        headingPrefix="category-"
+        label="公共分类"
+      />
+
+      <div className="public-navigation__categories">
+        {visibleCategories?.map((category) => (
+          <CategorySection key={category.id} category={category} />
+        ))}
+      </div>
+    </section>
+  );
+
+  return (
+    <div className="app app--home">
+      <header className="site-header">
+        <div className="site-header__top">
+          <BrandHeader branding={branding} />
+          <SessionBar
+            session={session}
+            isAuthenticated={isAuthenticated}
+            isLoginVisible={isLoginVisible}
+            adminEntry={adminEntry}
+            settingsEntry={settingsEntry}
+            onLogout={onLogout}
+            onShowLogin={onShowLogin}
+            onHideLogin={onHideLogin}
+          />
+        </div>
+      </header>
+
+      <main className="content">
+        {!isAuthenticated && isLoginVisible ? (
+          <LoginForm
+            isSubmitting={login.isSubmitting}
+            errorMessage={login.errorMessage}
+            onSubmit={login.onSubmit}
+          />
+        ) : null}
+
+        {/*
+          Search sits above the navigation so users do not need to know whether a
+          link is personal or public before searching; it spans both sections.
+        */}
+        <SearchBar query={search.query} onChange={search.onChange} />
+        {search.showNoResults ? (
+          <p className="status" role="status">
+            没有找到匹配的网址
+          </p>
+        ) : null}
+
+        {/* Personal navigation is rendered before public navigation. */}
+        {personal?.view ?? null}
+
+        {navigationResults}
+
+      </main>
+
+      {branding.footerText !== null && branding.footerText.length > 0 ? (
+        <footer className="site-footer">
+          <FooterContent text={branding.footerText} />
+        </footer>
+      ) : null}
+    </div>
+  );
+}

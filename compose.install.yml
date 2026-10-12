@@ -1,0 +1,24 @@
+# Standalone installation: no source checkout or local build required.
+name: navigation
+
+services:
+  app:
+    image: "${NAV_IMAGE:?NAV_IMAGE must be a published fixed version or digest; see docs/INSTALL.md}"
+    platform: linux/amd64
+    restart: unless-stopped
+    ports:
+      # Expose only to this host by default. Use an existing HTTPS reverse proxy.
+      - "${NAV_BIND_IP:-127.0.0.1}:${NAV_PORT:-3000}:3000"
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 3000
+      DATABASE_PATH: /data/nav.sqlite
+      UPLOADS_DIR: /data/uploads
+      BETTER_AUTH_SECRET: "${BETTER_AUTH_SECRET:?BETTER_AUTH_SECRET must be set}"
+      BETTER_AUTH_URL: "${BETTER_AUTH_URL:?BETTER_AUTH_URL must be the exact browser-visible origin}"
+    volumes:
+      - navigation-data:/data
+
+volumes:
+  navigation-data:

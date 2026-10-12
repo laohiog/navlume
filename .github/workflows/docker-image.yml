@@ -1,0 +1,106 @@
+name: Navlume Docker distribution
+
+# Manual only. A repository push never publishes an image.
+on:
+  workflow_dispatch:
+    inputs:
+      expected_commit:
+        description: Full 40-character independently reviewed commit (must match the selected ref)
+        required: true
+        type: string
+      publish:
+        description: Publish Navlume to GHCR after review and publication authorization
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  image:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Bind the build to the reviewed source
+        id: source
+        env:
+          EXPECTED_COMMIT: ${{ inputs.expected_commit }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REPOSITORY" = "laohiog/navlume"
+          [[ "$EXPECTED_COMMIT" =~ ^[0-9a-f]{40}$ ]]
+          test "$(git rev-parse HEAD)" = "$EXPECTED_COMMIT"
+          test "$GITHUB_SHA" = "$EXPECTED_COMMIT"
+          test -z "$(git status --porcelain)"
+          image="ghcr.io/${GITHUB_REPOSITORY,,}"
+          echo "image=$image" >> "$GITHUB_OUTPUT"
+          echo "tag=$image:sha-$EXPECTED_COMMIT" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4
+
+      - name: Build AMD64 (no registry push)
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7
+        with:
+          context: .
+          platforms: linux/amd64
+          load: true
+          push: false
+          tags: ${{ steps.source.outputs.tag }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=sha-${{ github.sha }}
+
+      - name: Verify the native SQLite module in the built runtime
+        env:
+          IMAGE: ${{ steps.source.outputs.tag }}
+        run: |
+          docker run --rm --platform linux/amd64 "$IMAGE" node --input-type=module -e '
+            import Database from "better-sqlite3";
+            const db = new Database(":memory:");
+            if (db.prepare("select 1 as ok").get().ok !== 1) process.exit(1);
+            db.close();
+          '
+
+      - name: Login to GHCR
+        if: ${{ inputs.publish }}
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish and record the deployable digest
+        if: ${{ inputs.publish }}
+        env:
+          IMAGE: ${{ steps.source.outputs.tag }}
+        run: |
+          set -euo pipefail
+          docker push "$IMAGE"
+          digest_ref="$(docker image inspect "$IMAGE" --format '{{index .RepoDigests 0}}')"
+          test -n "$digest_ref"
+          {
+            echo "Commit: $GITHUB_SHA"
+            echo "Platform: linux/amd64 (ARM64 UNVERIFIED)"
+            echo "Tag: $IMAGE"
+            echo "NAV_IMAGE=$digest_ref"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Record build-only result
+        if: ${{ !inputs.publish }}
+        env:
+          IMAGE: ${{ steps.source.outputs.tag }}
+        run: |
+          {
+            echo "Build only; no image published."
+            echo "Commit: $GITHUB_SHA"
+            echo "Platform: linux/amd64 (ARM64 UNVERIFIED)"
+            docker image inspect "$IMAGE" --format 'Local image ID: {{.Id}}'
+          } >> "$GITHUB_STEP_SUMMARY"

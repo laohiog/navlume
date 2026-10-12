@@ -1,0 +1,34 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1789228160865,
+      "tag": "0000_cuddly_nebula",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1789231743846,
+      "tag": "0001_salty_black_knight",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1789280161966,
+      "tag": "0002_outstanding_ultragirl",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1790944943513,
+      "tag": "0003_overrated_cannonball",
+      "breakpoints": true
+    }
+  ]
+}

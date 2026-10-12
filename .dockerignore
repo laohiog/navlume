@@ -1,0 +1,32 @@
+# Only inputs actually read by Dockerfile/npm run build enter the context.
+# Excludes Git, .env, local data/uploads/backups, credentials, tests and docs.
+**
+!package.json
+!package-lock.json
+!LICENSE
+!tsconfig.json
+!tsconfig.server.json
+!tsconfig.server-build.json
+!vite.config.ts
+!index.html
+!src/
+!src/**
+!scripts/
+!scripts/copy-migrations.mjs
+
+# Also refuse local state or credentials accidentally placed below src/.
+**/.env
+**/.env.*
+**/.npmrc
+**/*.sqlite
+**/*.sqlite3
+**/*.sqlite-*
+**/*.sqlite3-*
+**/*.db
+**/*.db-*
+**/*.pem
+**/*.key
+**/*.p12
+**/data/**
+**/uploads/**
+**/backups/**

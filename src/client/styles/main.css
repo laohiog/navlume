@@ -1,0 +1,2692 @@
+/*
+ * Theme tokens.
+ *
+ * Both themes are expressed once through custom properties, so components below
+ * never hard-code a theme-specific color. `--brand-primary` is overridden at
+ * runtime from the admin-configured `#RRGGBB` value; the literal here is only the
+ * default accent.
+ *
+ * `data-theme` is set on <html> by the client from `site_settings.default_theme`.
+ * Defaults to light so the page is styled before any branding fetch resolves.
+ *
+ * Light-token values must be concrete literals. A token defined as
+ * `var(--same-token)` is self-referential, so the declaration is invalid at
+ * computed-value time and every consumer silently falls back to its initial
+ * value — no surface fill, no border, no danger colour. `--brand-on-primary`
+ * stays a cross-reference, so it resolves to a light surface for contrast
+ * against the brand fill.
+ */
+:root,
+:root[data-theme='light'] {
+  --surface: #f5f7fa;
+  --surface-raised: #ffffff;
+  --surface-sunken: #e8edf3;
+  --surface-muted: #eef2f6;
+  --brand-tint: color-mix(in srgb, var(--brand-primary) 7%, var(--surface-raised));
+  --text: #202b38;
+  --text-muted: #566374;
+  --text-subtle: #657387;
+  --border: #e3e8ef;
+  --border-input: #b8c3cf;
+  --border-strong: #8e9eaf;
+  --brand-primary: #285b47;
+  --brand-on-primary: var(--surface-raised);
+  --danger: #a8423c;
+  --shadow-soft: 0 5px 18px rgba(32, 40, 34, 0.055);
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  --surface: #161c25;
+  --surface-raised: #202936;
+  --surface-sunken: #263140;
+  --surface-muted: #2a3544;
+  --brand-tint: color-mix(in srgb, var(--brand-primary) 7%, var(--surface-raised));
+  --text: #edf2f8;
+  --text-muted: #b3c0d0;
+  --text-subtle: #a4b2c4;
+  --border: #303d4e;
+  --border-input: #576a82;
+  --border-strong: #8091a8;
+  --brand-primary: #89c4a1;
+  --brand-on-primary: #14211a;
+  --danger: #ec938b;
+  --shadow-soft: 0 8px 22px rgba(0, 0, 0, 0.2);
+  color-scheme: dark;
+}
+
+:root {
+  font-family: 'Aptos', 'Segoe UI Variable', 'PingFang SC', 'Microsoft YaHei UI', sans-serif;
+  line-height: 1.55;
+  color: var(--text);
+  background-color: var(--surface);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background-color: var(--surface);
+  color: var(--text);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--text-subtle);
+  opacity: 1;
+}
+
+.app {
+  width: 100%;
+  max-width: 78rem;
+  margin: 0 auto;
+  padding: clamp(1.5rem, 4vw, 3.25rem) clamp(1rem, 3.5vw, 2.75rem) 3.5rem;
+}
+
+.site-header {
+  border-top: 1px solid var(--brand-primary);
+  border-bottom: 1px solid var(--border-strong);
+  border-left: 4px solid var(--brand-primary);
+  padding: 1.4rem 1.25rem 1.5rem;
+  margin-bottom: 2.2rem;
+}
+
+.site-header__top {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 1.5rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.session-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.7rem;
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+
+.session-bar__user {
+  font-weight: 500;
+}
+
+.session-bar__button {
+  font: inherit;
+  min-height: 2.4rem;
+  padding: 0.3rem 0.2rem;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  border-radius: 0;
+  background-color: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.session-bar__button:hover {
+  border-bottom-color: var(--brand-primary);
+  color: var(--text);
+}
+
+.session-bar__button:focus-visible,
+.login__input:focus-visible,
+.login__submit:focus-visible {
+  outline: 3px solid var(--brand-primary);
+  outline-offset: 2px;
+}
+
+.login {
+  max-width: 27rem;
+  margin: 0 auto 2rem;
+  padding: 1.5rem;
+  border: 1px solid var(--border);
+  border-radius: 0.8rem;
+  background-color: var(--surface-raised);
+  box-shadow: var(--shadow-soft);
+}
+
+.login__title {
+  font-size: 1.1rem;
+  margin: 0 0 0.5rem;
+}
+
+.login__description {
+  margin: 0 0 1rem;
+  color: var(--text-muted);
+}
+
+.login__form {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.login__field {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.login__label {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.login__input {
+  font: inherit;
+  min-height: 2.75rem;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--border-input);
+  border-radius: 0.55rem;
+  background-color: var(--surface-raised);
+  color: var(--text);
+}
+
+.login__input:disabled {
+  background-color: var(--surface-sunken);
+}
+
+.login__submit {
+  font: inherit;
+  min-height: 2.75rem;
+  padding: 0.55rem 1.1rem;
+  border: 1px solid var(--brand-primary);
+  border-radius: 0.55rem;
+  background-color: var(--brand-primary);
+  color: var(--brand-on-primary);
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.login__submit:disabled {
+  opacity: 0.65;
+  cursor: default;
+}
+
+.login__error {
+  margin: 0;
+  color: var(--danger);
+}
+
+.site-header__name {
+  font-family: 'Iowan Old Style', 'Noto Serif SC', 'Songti SC', Georgia, serif;
+  font-size: clamp(1.9rem, 3.4vw, 2.55rem);
+  line-height: 1.12;
+  letter-spacing: -0.035em;
+  font-weight: 600;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.site-header__tagline {
+  margin: 0.65rem 0 0;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.category {
+  min-width: 0;
+}
+
+.category__title {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  font-size: 1.15rem;
+  line-height: 1.35;
+  margin: 0 0 0.65rem;
+  padding: 0 0 0.55rem 0.8rem;
+  border-left: 3px solid var(--brand-primary);
+  border-bottom: 1px solid var(--border);
+  overflow-wrap: anywhere;
+}
+
+.category__empty {
+  color: var(--text-subtle);
+  margin: 0;
+}
+
+.link-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0;
+}
+
+.link-card__anchor {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-height: 3rem;
+  padding: 0.65rem 2rem 0.65rem 0.75rem;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  background-color: transparent;
+  color: inherit;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+  box-shadow: none;
+  transition: background-color 120ms ease;
+}
+
+.link-card__anchor::before,
+.link-card__anchor::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: 0.8rem;
+  pointer-events: none;
+}
+
+.link-card__anchor::before {
+  width: 0.55rem;
+  height: 1px;
+  background-color: var(--text-subtle);
+  transform: translateY(-50%);
+}
+
+.link-card__anchor::after {
+  width: 0.42rem;
+  height: 0.42rem;
+  border-top: 1px solid var(--text-subtle);
+  border-right: 1px solid var(--text-subtle);
+  transform: translateY(-50%) rotate(45deg);
+}
+
+.link-card__anchor:hover {
+  border-bottom-color: var(--border-strong);
+  background-color: var(--brand-tint);
+}
+
+.link-card__anchor:hover::before,
+.link-card__anchor:focus-visible::before {
+  background-color: var(--brand-primary);
+}
+
+.link-card__anchor:hover::after,
+.link-card__anchor:focus-visible::after {
+  border-color: var(--brand-primary);
+}
+
+.link-card__anchor:hover .link-card__title {
+  color: var(--brand-ink, var(--brand-primary));
+}
+
+.link-card__anchor:focus-visible {
+  outline: 3px solid var(--brand-primary);
+  outline-offset: 2px;
+}
+
+.link-card__title {
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.link-card__description {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.status {
+  color: var(--text-muted);
+}
+
+.status--error {
+  color: var(--danger);
+}
+
+.site-footer {
+  border-top: 1px solid var(--border);
+  margin-top: 2rem;
+  padding-top: 1rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  overflow-wrap: anywhere;
+}
+
+.site-footer a {
+  color: var(--brand-ink, var(--brand-primary));
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Personal navigation (authenticated only)                                   */
+/* -------------------------------------------------------------------------- */
+
+.personal {
+  margin-bottom: 1.5rem;
+  padding: 0 0 0 1rem;
+  border: 0;
+  border-left: 3px solid var(--brand-primary);
+  border-radius: 0;
+  background-color: transparent;
+  box-shadow: none;
+}
+
+.personal__header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.85rem;
+}
+
+.personal__title {
+  font-size: 1.3rem;
+  line-height: 1.3;
+  margin: 0;
+  color: var(--brand-ink, var(--brand-primary));
+  overflow-wrap: anywhere;
+}
+
+.personal__error {
+  margin: 0 0 1rem;
+  color: var(--danger);
+}
+
+/*
+ * Success confirmation for a completed Quick Add.
+ *
+ * Deliberately quiet and non-error-adjacent: it uses the existing muted text
+ * token rather than introducing a new "success" colour to the palette, so the
+ * light/dark token contract stays as UX1.1 repaired it.
+ */
+.personal__success {
+  margin: 0 0 1rem;
+  color: var(--text-muted);
+}
+
+.personal__form {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0.75rem 0 1rem;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 0.65rem;
+  background-color: var(--surface-raised);
+}
+
+.personal__field {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.personal__label {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.personal__input {
+  font: inherit;
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--border-input);
+  border-radius: 0.55rem;
+  background-color: var(--surface-raised);
+  color: var(--text);
+}
+
+.personal__input:disabled {
+  background-color: var(--surface-sunken);
+}
+
+/*
+ * Visible focus for personal-navigation inputs.
+ *
+ * Every other input in the application pairs with the brand focus ring
+ * (`.login__input`, `.search__input`, `.admin__input`, `.branding__input`,
+ * `.users__input`, `.portability__textarea`); `--brand-primary` was broken in the
+ * light theme until UX1.1, so the omission was invisible in dark mode and this
+ * one missing rule went unnoticed. It matters most for the Quick Add URL field,
+ * which is focused programmatically on open and after a rejected URL — without a
+ * ring the caret was the only indication of where typing would go.
+ */
+.personal__input:focus-visible {
+  outline: 3px solid var(--brand-primary);
+  outline-offset: 2px;
+}
+
+.personal__form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.personal__button {
+  font: inherit;
+  min-height: 2.75rem;
+  padding: 0.4rem 0.65rem;
+  border: 1px solid transparent;
+  border-radius: 0.35rem;
+  background-color: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.personal__button:hover:not(:disabled) {
+  background-color: var(--surface-muted);
+  color: var(--text);
+}
+
+.personal__button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.personal__button--primary {
+  border-color: var(--brand-primary);
+  background-color: var(--brand-primary);
+  color: var(--brand-on-primary);
+  font-weight: 650;
+  padding-inline: 1.05rem;
+  box-shadow: var(--shadow-soft);
+}
+
+.personal__button--primary:hover:not(:disabled) {
+  background-color: var(--brand-primary);
+  filter: brightness(0.96);
+}
+
+.personal__button--icon {
+  min-width: 2.75rem;
+  padding: 0.45rem 0.5rem;
+}
+
+.personal__button:focus-visible {
+  outline: 3px solid var(--brand-primary);
+  outline-offset: 2px;
+}
+
+.personal-category {
+  min-width: 0;
+}
+
+.personal-category__header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.35rem;
+}
+
+.personal-category__title {
+  font-size: 1.04rem;
+  line-height: 1.35;
+  margin: 0;
+  padding-left: 0.65rem;
+  border-left: 1px solid var(--border-strong);
+  overflow-wrap: anywhere;
+}
+
+.personal-category__controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.personal-category__empty {
+  color: var(--text-subtle);
+  margin: 0 0 0.35rem;
+}
+
+.personal-link-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0;
+}
+
+.personal-link {
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  background-color: transparent;
+  padding: 0.2rem 0.45rem;
+  transition: background-color 120ms ease;
+}
+
+.personal-link:hover {
+  background-color: var(--brand-tint);
+}
+
+.personal-link__main {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.personal-link__anchor {
+  flex: 1 1 12rem;
+  min-height: 2.75rem;
+  display: flex;
+  align-items: center;
+  color: inherit;
+  font-weight: 600;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+.personal-link__anchor:hover {
+  color: var(--brand-ink, var(--brand-primary));
+  text-decoration: underline;
+}
+
+.personal-link__anchor:focus-visible {
+  outline: 3px solid var(--brand-primary);
+  outline-offset: 2px;
+}
+
+.personal-link__controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.personal__header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+/* Quick Add is the primary entry point, so its form gets a subtle accent. */
+.quick-add {
+  border-color: var(--brand-primary);
+  background-color: var(--brand-tint);
+  box-shadow: none;
+}
+
+.quick-add__hint {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Search (client-side, spans personal + public navigation)                    */
+/* -------------------------------------------------------------------------- */
+
+.search {
+  max-width: 56rem;
+  margin: 0 auto 1.5rem;
+}
+
+.search__field {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.search__label {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.045em;
+  color: var(--brand-ink, var(--brand-primary));
+}
+
+.search__label::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background-color: var(--border);
+}
+
+.search__input {
+  font: inherit;
+  width: 100%;
+  min-height: 3rem;
+  padding: 0.65rem 0.9rem;
+  border: 1px solid var(--border-strong);
+  border-left: 4px solid var(--brand-primary);
+  border-radius: 0.2rem;
+  background-color: var(--surface-raised);
+  color: var(--text);
+  box-shadow: none;
+  transition: border-color 120ms ease;
+}
+
+.search__input:focus-visible {
+  outline: 3px solid var(--brand-primary);
+  outline-offset: 2px;
+  border-color: var(--brand-primary);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Admin public navigation (admins only)                                       */
+/* -------------------------------------------------------------------------- */
+
+.admin {
+  margin-bottom: 1.5rem;
+  padding: 0;
+}
+
+.admin__header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.admin__title {
+  font-size: 1.15rem;
+  line-height: 1.3;
+  margin: 0;
+}
+
+.admin__error {
+  margin: 0 0 1rem;
+  color: var(--danger);
+}
+
+.admin__form {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0.75rem 0 1rem;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 0.65rem;
+  background-color: var(--surface-muted);
+}
+
+.admin__field {
+  display: grid;
+  min-width: 0;
+  gap: 0.3rem;
+}
+
+.admin__label {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.admin__input {
+  font: inherit;
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--border-input);
+  border-radius: 0.55rem;
+  background-color: var(--surface-raised);
+  color: var(--text);
+}
+
+.admin__checkbox {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.admin__form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.admin__button {
+  font: inherit;
+  min-height: 2.75rem;
+  padding: 0.4rem 0.65rem;
+  border: 1px solid transparent;
+  border-radius: 0.4rem;
+  background-color: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background-color 140ms ease, border-color 140ms ease;
+}
+
+.admin__button:hover:not(:disabled) {
+  background-color: var(--surface-muted);
+  color: var(--text);
+}
+
+.admin__button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.admin__button--primary {
+  border-color: var(--brand-primary);
+  background-color: var(--brand-primary);
+  color: var(--brand-on-primary);
+  font-weight: 650;
+}
+
+.admin__button--icon {
+  min-width: 2.75rem;
+  padding: 0.45rem 0.5rem;
+}
+
+.admin__button:focus-visible,
+.admin__input:focus-visible {
+  outline: 3px solid var(--brand-primary);
+  outline-offset: 2px;
+}
+
+.admin-category {
+  margin-bottom: 1rem;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  background-color: var(--surface-raised);
+}
+
+/* Hidden rows are visually distinct so an admin can spot them immediately. */
+.admin-category--hidden,
+.admin-link--hidden {
+  border-style: dashed;
+  background-color: var(--surface-muted);
+}
+
+.admin-category__header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  padding: 0.4rem 1rem;
+  margin-bottom: 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.admin-category__title {
+  font-size: 1rem;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.admin-category__controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-left: auto;
+}
+
+.admin-category__empty {
+  color: var(--text-subtle);
+  margin: 0;
+  padding: 1rem;
+}
+
+.admin-link-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0;
+}
+
+.admin-link {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.5rem 1rem;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+}
+
+.admin-link__main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.15rem 0.75rem;
+  align-items: start;
+  min-width: 0;
+}
+
+.admin-link__title {
+  font-weight: 600;
+  font-size: 0.95rem;
+  overflow-wrap: anywhere;
+}
+
+.admin-link__url {
+  grid-column: 1 / -1;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+
+.admin-link__badge {
+  font-size: 0.78rem;
+  padding: 0.1rem 0.45rem;
+  border: 1px solid var(--border-input);
+  border-radius: 0.3rem;
+  color: var(--text-muted);
+}
+
+.admin-link__controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.1rem;
+}
+
+.admin__button--danger {
+  color: var(--danger);
+}
+
+.admin__button--danger:hover:not(:disabled) {
+  color: var(--danger);
+  background-color: color-mix(in srgb, var(--danger) 8%, var(--surface-raised));
+}
+
+.admin__button--add {
+  margin: 0.25rem 0.5rem;
+  color: var(--text);
+}
+
+.admin-category > .admin__form {
+  margin: 0.75rem 1rem;
+}
+
+.admin-link > .admin__form {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Brand header and admin branding                                             */
+/* -------------------------------------------------------------------------- */
+
+.site-header__brand {
+  display: flex;
+  flex-wrap: wrap;
+  flex: 1 1 auto;
+  gap: 1rem;
+  align-items: center;
+  min-width: 0;
+}
+
+.site-header__brand-text {
+  min-width: 0;
+}
+
+/*
+ * Uploaded logos cannot dictate layout: size is fixed by CSS with `object-fit`,
+ * so an oversized or oddly-proportioned image can never widen the page.
+ */
+.site-header__logo {
+  height: 3.25rem;
+  width: auto;
+  max-width: 10rem;
+  object-fit: contain;
+  padding: 0.25rem;
+  background-color: var(--brand-tint);
+}
+
+.branding {
+  margin-bottom: 2rem;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  background-color: var(--surface-raised);
+  box-shadow: none;
+}
+
+.branding__title {
+  font-size: 1.15rem;
+  margin: 0 0 1rem;
+}
+
+.branding__error {
+  margin: 0 0 1rem;
+  color: var(--danger);
+}
+
+.branding__form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.branding__section {
+  display: grid;
+  align-content: start;
+  min-width: 0;
+  gap: 0.8rem;
+  margin: 0;
+  padding: 0.8rem 1rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 0.4rem;
+}
+
+.branding__section-title {
+  margin: 0 0 0.65rem;
+  padding: 0 0.25rem;
+  font-size: 0.95rem;
+  font-weight: 650;
+}
+
+.branding__form > .branding__button {
+  grid-column: 1 / -1;
+  justify-self: start;
+  padding-inline: 1.5rem;
+}
+
+.branding__field {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.branding__label {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.branding__input {
+  font: inherit;
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--border-input);
+  border-radius: 0.55rem;
+  background-color: var(--surface-raised);
+  color: var(--text);
+}
+
+.branding__fieldset {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  margin: 0;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 0.4rem;
+}
+
+.branding__radio {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.branding__button {
+  font: inherit;
+  min-height: 2.75rem;
+  padding: 0.45rem 0.9rem;
+  border: 1px solid var(--border-input);
+  border-radius: 0.4rem;
+  background-color: var(--surface-raised);
+  color: inherit;
+  cursor: pointer;
+  transition: background-color 140ms ease, border-color 140ms ease;
+}
+
+.branding__button:hover:not(:disabled) {
+  border-color: var(--border-strong);
+  background-color: var(--surface-muted);
+}
+
+.branding__button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.branding__button--primary {
+  border-color: var(--brand-primary);
+  background-color: var(--brand-primary);
+  color: var(--brand-on-primary);
+}
+
+.branding__button:focus-visible,
+.branding__input:focus-visible {
+  outline: 3px solid var(--brand-primary);
+  outline-offset: 2px;
+}
+
+.branding__assets {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+}
+
+@media (min-width: 40rem) {
+  .branding__assets {
+    grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  }
+}
+
+.branding__asset {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
+  gap: 0.4rem;
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 0.4rem;
+  background-color: var(--surface-muted);
+}
+
+/* Previews are bounded so an uploaded image cannot overflow the viewport. */
+.branding__preview {
+  height: 3rem;
+  width: auto;
+  max-width: 100%;
+  object-fit: contain;
+  align-self: start;
+  background-color: #fff;
+  padding: 0.25rem;
+  border-radius: 0.3rem;
+}
+
+.branding__empty {
+  color: var(--text-subtle);
+  font-size: 0.9rem;
+}
+
+.branding__asset-actions {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.branding__file {
+  font: inherit;
+  font-size: 0.85rem;
+  min-width: 0;
+  max-width: 100%;
+  color: var(--text-muted);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Admin user management (admins only)                                         */
+/* -------------------------------------------------------------------------- */
+
+.users {
+  margin-bottom: 2rem;
+  padding: 0;
+}
+
+.users__header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.users__title {
+  font-size: 1.15rem;
+  margin: 0;
+}
+
+.users__error {
+  margin: 0 0 1rem;
+  color: var(--danger);
+}
+
+.users__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.user-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.75rem 1rem;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border);
+  background-color: var(--surface-raised);
+}
+
+/* Disabled accounts are visually distinct, in addition to their text label. */
+.user-row--disabled {
+  border-bottom-style: dashed;
+  background-color: var(--surface-sunken);
+}
+
+.user-row__main {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+  gap: 0.5rem 1.5rem;
+}
+
+.user-row__name {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.user-row__meta {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+
+.user-row__badge,
+.user-row__state {
+  font-size: 0.78rem;
+  padding: 0.1rem 0.45rem;
+  border: 1px solid var(--border-input);
+  border-radius: 0.3rem;
+  color: var(--text-muted);
+}
+
+.user-row__state--disabled {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.user-row__controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.15rem;
+}
+
+.users__form {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0.75rem 0 1rem;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 0.65rem;
+  background-color: var(--surface-muted);
+}
+
+.users__field {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.users__label {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.users__input {
+  font: inherit;
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--border-input);
+  border-radius: 0.55rem;
+  background-color: var(--surface-raised);
+  color: var(--text);
+}
+
+.users__form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.users__hint {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.users__button {
+  font: inherit;
+  min-height: 2.75rem;
+  padding: 0.4rem 0.65rem;
+  border: 1px solid transparent;
+  border-radius: 0.4rem;
+  background-color: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background-color 140ms ease, border-color 140ms ease;
+}
+
+.users__button:hover:not(:disabled) {
+  background-color: var(--surface-muted);
+  color: var(--text);
+}
+
+.users__button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.users__button--primary {
+  border-color: var(--brand-primary);
+  background-color: var(--brand-primary);
+  color: var(--brand-on-primary);
+}
+
+/* Destructive action, visually distinct so it cannot be hit by accident. */
+.users__button--danger {
+  color: var(--danger);
+}
+
+.users__button--danger:hover:not(:disabled) {
+  color: var(--danger);
+  background-color: color-mix(in srgb, var(--danger) 8%, var(--surface-raised));
+}
+
+.user-row__identity {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  min-width: 0;
+  gap: 0.15rem 0.75rem;
+}
+
+.user-row__identity .user-row__meta:last-child {
+  grid-column: 1 / -1;
+}
+
+.user-row__status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.user-row:last-child {
+  border-bottom: 0;
+}
+
+.user-row > .users__form {
+  grid-column: 1 / -1;
+}
+
+.users__button:focus-visible,
+.users__input:focus-visible {
+  outline: 3px solid var(--brand-primary);
+  outline-offset: 2px;
+}
+
+/* -------------------------------------------------------------------------- */
+/* JSON data portability (P6.1)                                                */
+/* -------------------------------------------------------------------------- */
+
+.portability__group {
+  margin-bottom: 2rem;
+  padding: 1.15rem;
+  border: 1px solid var(--border);
+  border-radius: 0.8rem;
+  background-color: var(--surface-raised);
+  box-shadow: var(--shadow-soft);
+}
+
+.portability__group-header {
+  margin-bottom: 1rem;
+}
+
+.portability__group-title {
+  font-size: 1.35rem;
+  margin: 0 0 0.35rem;
+}
+
+.portability__group-description {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.92rem;
+}
+
+.portability {
+  margin-top: 1rem;
+  padding: 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  background-color: var(--surface-muted);
+}
+
+.portability__header {
+  margin-bottom: 0.85rem;
+}
+
+.portability__title {
+  font-size: 1.1rem;
+  margin: 0 0 0.25rem;
+}
+
+.portability__description,
+.portability__hint {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+}
+
+.portability__error {
+  margin: 0 0 0.85rem;
+  color: var(--danger);
+}
+
+.portability__notice {
+  margin: 0 0 0.85rem;
+  color: var(--text-muted);
+}
+
+.portability__step {
+  display: grid;
+  gap: 0.5rem;
+  margin-bottom: 0.9rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--border);
+}
+
+.portability__step:last-child {
+  margin-bottom: 0;
+}
+
+.portability__step-title {
+  font-size: 0.98rem;
+  margin: 0;
+}
+
+.portability__field {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.portability__label {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.portability__textarea,
+.portability__file {
+  font: inherit;
+  width: 100%;
+  color: var(--text);
+  background-color: var(--surface);
+  border: 1px solid var(--border-input);
+  border-radius: 0.35rem;
+  padding: 0.5rem;
+}
+
+.portability__textarea {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.85rem;
+  resize: vertical;
+}
+
+.portability__preview {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 0.35rem;
+  background-color: var(--surface-raised);
+}
+
+.portability__preview-line {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.portability__preview-warning {
+  margin: 0.25rem 0 0;
+  font-size: 0.9rem;
+  color: var(--danger);
+}
+
+.portability__warning {
+  margin: 0;
+  padding: 0.6rem;
+  font-size: 0.9rem;
+  color: var(--danger);
+  border: 1px solid var(--border);
+  border-radius: 0.35rem;
+  background-color: var(--surface-raised);
+}
+
+.portability__checkbox {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  font-size: 0.92rem;
+}
+
+.portability__button {
+  font: inherit;
+  justify-self: start;
+  padding: 0.5rem 0.9rem;
+  min-height: 2.65rem;
+  color: var(--text);
+  background-color: var(--surface-raised);
+  border: 1px solid var(--border-input);
+  border-radius: 0.55rem;
+  cursor: pointer;
+  transition: background-color 140ms ease, border-color 140ms ease;
+}
+
+.portability__button:hover:not(:disabled) {
+  border-color: var(--brand-primary);
+  background-color: var(--surface-muted);
+}
+
+.portability__button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.portability__button--danger {
+  color: var(--brand-on-primary);
+  background-color: var(--danger);
+  border-color: var(--danger);
+}
+
+.portability__button:focus-visible,
+.portability__textarea:focus-visible,
+.portability__file:focus-visible,
+.portability__checkbox input:focus-visible {
+  outline: 3px solid var(--brand-primary);
+  outline-offset: 2px;
+}
+
+/*
+ * Management navigation shares the existing theme and button language.
+ *
+ * Both reuse the existing theme tokens and the session-bar button language; no
+ * new design system is introduced. The admin tabs wrap on narrow viewports
+ * instead of scrolling horizontally, and no sidebar exists by design.
+ */
+.admin-management__toolbar,
+.personal-settings__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem 1rem;
+  align-items: center;
+  justify-content: space-between;
+  flex-direction: row-reverse;
+  margin-bottom: 0.75rem;
+}
+
+.admin-management__back,
+.personal-settings__back {
+  font: inherit;
+  min-height: 2.75rem;
+  padding: 0.45rem 0.9rem;
+  border: 1px solid var(--border-input);
+  border-radius: 0.4rem;
+  background-color: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background-color 140ms ease, border-color 140ms ease;
+}
+
+.admin-management__back:hover,
+.personal-settings__back:hover {
+  border-color: var(--border-strong);
+  background-color: var(--surface-muted);
+}
+
+.admin-management__back:focus-visible,
+.personal-settings__back:focus-visible {
+  outline: 3px solid var(--brand-primary);
+  outline-offset: 2px;
+}
+
+.admin-management__title,
+.personal-settings__title {
+  margin: 0;
+  font-size: 1.3rem;
+  line-height: 1.25;
+  letter-spacing: -0.025em;
+}
+
+.admin-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+  padding: 0.35rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  background-color: var(--surface-muted);
+}
+
+.admin-tabs__tab {
+  font: inherit;
+  min-height: 2.75rem;
+  padding: 0.45rem 0.9rem;
+  border: 1px solid transparent;
+  border-radius: 0.4rem;
+  background-color: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease;
+}
+
+.admin-tabs__tab:hover {
+  border-color: var(--border-strong);
+  background-color: var(--surface-muted);
+}
+
+.admin-tabs__tab[aria-current='true'] {
+  background-color: var(--surface-raised);
+  border-color: var(--border-input);
+  color: var(--text);
+  font-weight: 650;
+}
+
+.admin-tabs__tab:focus-visible {
+  outline: 3px solid var(--brand-primary);
+  outline-offset: 2px;
+}
+
+.admin-management__module {
+  min-width: 0;
+}
+
+/*
+ * Admin v2: the management workbench in the Launchpad language.
+ *
+ * The admin is a workbench, not a launchpad — no hover lifts here. What it
+ * shares with the homepage is the signage system (brand-tick section titles),
+ * the quiet text-tab language, one radius scale, and brand-as-signal-color.
+ * All functional behavior (badges, hidden-row dashes, danger actions) is
+ * preserved; only the visual voice changes.
+ */
+
+/* Page title: same signage tick as homepage category titles. */
+.app--admin .admin-management__title {
+  position: relative;
+  margin: 0;
+  padding-left: 0.75rem;
+  font-size: 1.4rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.app--admin .admin-management__title::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.15em;
+  bottom: 0.15em;
+  width: 4px;
+  border-radius: 2px;
+  background-color: var(--brand-primary);
+}
+
+/* Back: a quiet text action, not a boxed button. */
+.app--admin .admin-management__back {
+  min-height: 2.75rem;
+  padding: 0.45rem 0.25rem;
+  border: 0;
+  border-radius: 0;
+  background-color: transparent;
+  color: var(--text-muted);
+}
+
+.app--admin .admin-management__back:hover {
+  border-color: transparent;
+  background-color: transparent;
+  color: var(--brand-ink, var(--brand-primary));
+}
+
+.app--admin .admin-management__back::before {
+  content: '← ';
+}
+
+/* Tabs: quiet text tabs with a brand underline — the same language as the
+ * homepage category jumps. The heavy segmented container goes away. */
+.app--admin .admin-tabs {
+  gap: 0.25rem 1.5rem;
+  margin-bottom: 1.5rem;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background-color: transparent;
+}
+
+.app--admin .admin-tabs__tab {
+  min-height: 2.75rem;
+  padding: 0.45rem 0.1rem;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background-color: transparent;
+  color: var(--text-muted);
+  font-size: 1rem;
+}
+
+.app--admin .admin-tabs__tab:hover {
+  border-color: transparent;
+  border-bottom-color: var(--border-strong);
+  background-color: transparent;
+  color: var(--text);
+}
+
+.app--admin .admin-tabs__tab[aria-current='true'] {
+  background-color: transparent;
+  border-color: transparent;
+  border-bottom-color: var(--brand-primary);
+  color: var(--brand-ink, var(--brand-primary));
+  font-weight: 700;
+}
+
+/* Section titles across modules share the signage tick. */
+.app--admin .admin__title,
+.app--admin .branding__title,
+.app--admin .users__title {
+  position: relative;
+  padding-left: 0.75rem;
+  font-size: 1.2rem;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+
+.app--admin .admin__title::before,
+.app--admin .branding__title::before,
+.app--admin .users__title::before,
+.app--admin .branding__section-title::before,
+.app--admin .portability__group-title::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.15em;
+  bottom: 0.15em;
+  width: 4px;
+  border-radius: 2px;
+  background-color: var(--brand-primary);
+}
+
+.app--admin .branding__section-title,
+.app--admin .portability__group-title {
+  position: relative;
+  padding-left: 0.7rem;
+  color: var(--brand-ink, var(--brand-primary));
+}
+
+/* One radius scale, shared with homepage cards. */
+.app--admin .admin-category,
+.app--admin .admin__form,
+.app--admin .branding,
+.app--admin .users__form {
+  border-radius: 0.875rem;
+}
+
+.app--admin .branding__section,
+.app--admin .admin__input,
+.app--admin .branding__input,
+.app--admin .users__input {
+  border-radius: 0.65rem;
+}
+
+.app--admin .admin__button,
+.app--admin .branding__button,
+.app--admin .users__button,
+.app--admin .portability__button {
+  border-radius: 0.55rem;
+}
+
+/* Management rows: a touch more air, mono URLs like the homepage. */
+.app--admin .admin-link {
+  padding: 0.75rem 1.125rem;
+}
+
+.app--admin .admin-link__url {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+  font-size: 0.8rem;
+}
+
+/* Badges read as status chips. */
+.app--admin .admin-link__badge,
+.app--admin .user-row__badge {
+  border-radius: 999px;
+  padding: 0.15rem 0.6rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.app--admin .portability__group {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.app--admin .portability__group-title {
+  font-size: 1.15rem;
+}
+
+.app--admin .portability {
+  max-width: 64rem;
+  padding: 1rem;
+  background-color: var(--surface-raised);
+}
+
+.app--admin .portability__step {
+  gap: 0.65rem;
+  padding-top: 1rem;
+  margin-bottom: 1rem;
+}
+
+.app--admin .portability__textarea,
+.app--admin .portability__file {
+  min-width: 0;
+  border-radius: 0.4rem;
+  background-color: var(--surface-raised);
+}
+
+.app--admin .portability__warning {
+  border-color: var(--danger);
+  background-color: color-mix(in srgb, var(--danger) 7%, var(--surface-raised));
+}
+
+.app--admin .portability__button {
+  min-height: 2.75rem;
+  border-radius: 0.4rem;
+}
+
+.app--admin .portability__button--danger {
+  color: var(--danger);
+  border-color: var(--danger);
+  background-color: color-mix(in srgb, var(--danger) 7%, var(--surface-raised));
+}
+
+.app--admin :is(.branding__file, .portability__file)::file-selector-button {
+  font: inherit;
+  min-height: 2.75rem;
+  margin-right: 0.5rem;
+  padding: 0.4rem 0.65rem;
+  color: var(--text);
+  border: 1px solid var(--border-input);
+  border-radius: 0.4rem;
+  background-color: var(--surface-muted);
+  cursor: pointer;
+}
+
+.app--admin :is(.admin__checkbox, .branding__radio, .portability__checkbox) {
+  min-height: 2.75rem;
+}
+
+@media (min-width: 48rem) {
+  .admin__form,
+  .users__form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin__form-actions,
+  .users__form-actions,
+  .users__hint {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 48rem) {
+  .admin-link,
+  .user-row,
+  .branding__form {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .admin-category__controls {
+    width: 100%;
+    margin-left: 0;
+    gap: 0.1rem;
+  }
+
+  .admin-link__controls,
+  .user-row__controls {
+    justify-content: flex-start;
+  }
+
+  .branding__section,
+  .admin-category__header,
+  .admin-link,
+  .user-row {
+    padding-inline: 0.75rem;
+  }
+}
+
+@media (max-width: 40rem) {
+  .app {
+    padding: 1rem 1rem 2.25rem;
+  }
+
+  .site-header {
+    padding: 1rem 0.85rem 1.1rem;
+    margin-bottom: 1.65rem;
+  }
+
+  .site-header__top {
+    align-items: flex-start;
+  }
+
+  .session-bar {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .search {
+    margin-bottom: 1.25rem;
+  }
+
+  .personal {
+    padding: 0 0 0 0.65rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .personal__header {
+    align-items: flex-start;
+  }
+
+  .personal__header-actions {
+    width: 100%;
+  }
+
+  .personal__header-actions > .personal__button--primary {
+    flex: 1 1 auto;
+  }
+
+  .category {
+    margin-bottom: 0;
+  }
+
+  .admin-tabs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-tabs__tab {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
+
+/* Keep personal navigation actions available while letting link titles lead. */
+.personal-category__controls .personal__button,
+.personal-link__controls .personal__button {
+  color: var(--text-subtle);
+}
+
+/* Home and management share the same application shell and theme tokens. */
+.app--home,
+.app--admin,
+.app--settings {
+  max-width: 100rem;
+  min-height: 100dvh;
+  padding: 1.25rem clamp(1rem, 2.5vw, 2.5rem) 2rem;
+  background-color: var(--surface);
+}
+
+.app .site-header {
+  padding: 0;
+  margin-bottom: 1.25rem;
+  border: 0;
+}
+
+.app .site-header__top {
+  flex-wrap: nowrap;
+  gap: 1rem;
+}
+
+.app .site-header__brand {
+  min-width: 0;
+  gap: 0.65rem;
+}
+
+.app .site-header__name {
+  font-family: inherit;
+  font-size: 1.2rem;
+  font-weight: 700;
+  line-height: 1.35;
+  letter-spacing: -0.02em;
+}
+
+.app .site-header__tagline {
+  margin-top: 0.15rem;
+  font-size: 0.82rem;
+  color: var(--text-subtle);
+}
+
+.app .site-header__logo {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.5rem;
+}
+
+.app .session-bar {
+  flex-shrink: 0;
+  justify-content: flex-end;
+  font-size: 0.82rem;
+}
+
+.app .session-bar__button {
+  border: 0;
+  padding: 0.4rem 0.65rem;
+  min-height: 2.75rem;
+  border-radius: 0.4rem;
+}
+
+.app .session-bar__button:hover {
+  background-color: var(--surface-muted);
+}
+
+.app--home .search {
+  max-width: 45rem;
+  margin: 0 auto 1rem;
+}
+
+.app--home .search__field {
+  position: relative;
+  display: block;
+}
+
+.app--home .search__label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.app--home .search__label::after {
+  content: none;
+}
+
+.app--home .search__field::before,
+.app--home .search__field::after {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+  color: var(--text-subtle);
+}
+
+.app--home .search__field::before {
+  left: 1.05rem;
+  top: 1rem;
+  width: 0.85rem;
+  height: 0.85rem;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+}
+
+.app--home .search__field::after {
+  left: 1.86rem;
+  top: 1.8rem;
+  width: 0.45rem;
+  height: 2px;
+  background-color: currentColor;
+  transform: rotate(45deg);
+}
+
+.app--home .search__input {
+  min-height: 3.75rem;
+  border: 1.5px solid var(--border-strong);
+  border-radius: 0.9rem;
+  padding: 0.9rem 1.1rem 0.9rem 3rem;
+  font-size: 1.05rem;
+  box-shadow: none;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.app--home .search__input:focus-visible {
+  border-color: var(--brand-primary);
+  box-shadow: 0 0 0 4px var(--brand-tint);
+}
+
+/* Re-center the magnifier glyph on the taller field. */
+.app--home .search__field::before {
+  left: 1.1rem;
+  top: 1.22rem;
+}
+
+.app--home .search__field::after {
+  left: 1.91rem;
+  top: 2.02rem;
+}
+
+.app--home .personal {
+  margin-bottom: 2rem;
+  padding: 0;
+  border: 0;
+  background-color: transparent;
+}
+
+.app--home .personal__header {
+  margin-bottom: 0.65rem;
+}
+
+.app--home .personal__title,
+.public-navigation__title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--text);
+  margin: 0;
+}
+
+.public-navigation__title {
+  margin-bottom: 0.65rem;
+}
+
+.app :is(.personal__button--primary, .admin__button--primary, .branding__button--primary, .users__button--primary) {
+  /* A neutral text token stays legible even when the configured accent is pale. */
+  background-color: var(--brand-tint);
+  color: var(--text);
+  box-shadow: none;
+  white-space: nowrap;
+  border-radius: 0.4rem;
+}
+
+.app :is(.personal__button--primary, .admin__button--primary, .branding__button--primary, .users__button--primary):hover:not(:disabled) {
+  background-color: var(--surface-muted);
+  color: var(--text);
+  filter: none;
+}
+
+/*
+ * Category jumps: quiet text links, not filled pills — the signage below
+ * already carries the visual weight.
+ */
+.category-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.25rem;
+  margin-bottom: 1.25rem;
+}
+
+.category-nav__item {
+  font: inherit;
+  font-size: 0.9rem;
+  min-height: 2.75rem;
+  padding: 0.4rem 0.1rem;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background-color: transparent;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+.category-nav__item:hover {
+  background-color: transparent;
+  border-bottom-color: var(--brand-primary);
+  color: var(--text);
+}
+
+.app :is(a, button, input, select, textarea, summary):focus-visible,
+.app--home .category__title:focus-visible,
+.app--home .personal-category__title:focus-visible {
+  outline: 3px solid var(--text);
+  outline-offset: 2px;
+}
+
+.personal__categories,
+.public-navigation__categories {
+  display: grid;
+  gap: 1.75rem;
+}
+
+/*
+ * Category signage: a confident wayfinding marker, not small muted text.
+ * The brand-ink color plus the platform-edge tick make each category a visual
+ * anchor for scanning. Sentence case, no eyebrow labels.
+ */
+.app--home .category__title,
+.app--home .personal-category__title {
+  font-size: 1.08rem;
+  font-weight: 700;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+  border: 0;
+  border-left: 3px solid var(--brand-primary);
+  padding: 0.1rem 0 0.1rem 0.75rem;
+  margin: 0;
+  color: var(--brand-ink, var(--brand-primary));
+  scroll-margin-top: 1rem;
+}
+
+.app--home .category__title {
+  margin-bottom: 0.35rem;
+}
+
+.app--home .personal-category__header {
+  justify-content: flex-start;
+  margin-bottom: 0.35rem;
+  gap: 0.5rem;
+}
+
+.app--home .personal-category__controls {
+  gap: 0.15rem;
+}
+
+/*
+ * Launchpad redesign (v2): icon-forward link cards in a responsive grid.
+ *
+ * A navigation site is a launchpad: you scan icons and launch. Links are
+ * compact cards — site icon first, then title and a one-line destination —
+ * arranged in a dense grid under clear category signage. Brand color stays
+ * a signal color: hover lift, focus ring, Quick Add, signage. Nothing else.
+ */
+.app--home .link-list,
+.app--home .personal-link-list {
+  grid-template-columns: repeat(auto-fill, minmax(12.5rem, 1fr));
+  gap: 0.875rem;
+}
+
+.app--home .link-card,
+.app--home .personal-link {
+  min-width: 0;
+}
+
+.app--home .link-card__anchor,
+.app--home .personal-link__anchor {
+  position: relative;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.875rem;
+  min-height: 5.25rem;
+  height: 100%;
+  width: 100%;
+  padding: 1rem 1.125rem;
+  border: 1px solid var(--border);
+  border-radius: 0.875rem;
+  background-color: var(--surface-raised);
+  color: var(--text);
+  text-decoration: none;
+  box-shadow: none;
+  transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+
+/*
+ * Launch feedback: the card lifts a touch and its border takes the brand
+ * color — the tactile "press to go" of a launchpad tile.
+ */
+.app--home .link-card__anchor:hover,
+.app--home .personal-link__anchor:hover {
+  border-color: var(--brand-primary);
+  box-shadow: var(--shadow-soft), 0 0 0 1px var(--brand-primary);
+  transform: translateY(-2px);
+}
+
+.app--home .link-card__anchor:active,
+.app--home .personal-link__anchor:active {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+/* Cards don't use the base chevron — the whole tile is the affordance. */
+.app--home .link-card__anchor::before,
+.app--home .link-card__anchor::after {
+  content: none;
+}
+
+.app--home .personal-link {
+  padding: 0;
+  border: 0;
+  background-color: transparent;
+}
+
+.app--home .personal-link__main {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+}
+
+.app--home .personal-link__anchor {
+  flex: 1 1 auto;
+}
+
+/*
+ * Icon-forward: the site icon is the primary scan target on a launchpad,
+ * so it gets real presence. Letter fallbacks stay bold and legible.
+ */
+.app--home .destination-icon {
+  flex-basis: 2.75rem;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 0.65rem;
+  font-size: 1.25rem;
+}
+
+.destination-icon {
+  display: grid;
+  place-items: center;
+  position: relative;
+  flex: 0 0 2.25rem;
+  width: 2.25rem;
+  height: 2.25rem;
+  overflow: hidden;
+  border-radius: 0.45rem;
+  background-color: var(--surface-muted);
+  color: var(--text-muted);
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.destination-icon img {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  inset: 0;
+  object-fit: contain;
+  background-color: #fff;
+}
+
+.destination-copy {
+  display: grid;
+  min-width: 0;
+  gap: 0.2rem;
+}
+
+.app--home .link-card__title,
+.app--home .personal-link__title {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  font-size: 1rem;
+  font-weight: 650;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+}
+
+.app--home .link-card__description,
+.destination-secondary,
+.personal-link__description {
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: var(--text-subtle);
+  font-weight: 400;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/*
+ * Hostnames are data: set them in a tabular monospace so the destination
+ * reads at a glance. Real descriptions keep the proportional body face.
+ */
+.app--home .destination-secondary,
+.app--home .personal-link__description {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+}
+
+.app--home .category__empty,
+.app--home .personal-category__empty {
+  padding: 0.35rem 0;
+  margin: 0;
+  background-color: transparent;
+  font-size: 0.88rem;
+}
+
+.public-navigation {
+  margin-bottom: 1.5rem;
+}
+
+.personal__organize-hint {
+  color: var(--text-muted);
+  margin: 0 0 0.75rem;
+}
+
+.app--home .personal[data-organizing='true'] .personal-link-list {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.app--home .personal[data-organizing='true'] .personal-link__main {
+  height: auto;
+}
+
+.app--home .personal-link__controls {
+  gap: 0.15rem;
+  margin-top: 0.25rem;
+}
+
+.app--home .personal-link:has(.personal__form) {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 40rem) {
+  .app--home {
+    padding: 1rem 1rem 1.5rem;
+  }
+
+  .app .site-header {
+    margin-bottom: 1rem;
+  }
+
+  .app .site-header__top {
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  .app .site-header__name {
+    font-size: 1.1rem;
+  }
+
+  .app .session-bar {
+    width: 100%;
+  }
+
+  .app--home .search {
+    margin-bottom: 1rem;
+  }
+
+  .app--home .personal__header {
+    gap: 0.5rem;
+  }
+
+  .category-nav__item {
+    max-width: 100%;
+    font-size: 0.82rem;
+    padding-inline: 0.1rem;
+  }
+
+  .app--home .link-list,
+  .app--home .personal-link-list {
+    grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr));
+    gap: 0.625rem;
+  }
+
+  .app--home .link-card__anchor,
+  .app--home .personal-link__anchor {
+    padding: 0.8rem 0.9rem;
+    gap: 0.7rem;
+    min-height: 4.5rem;
+    border-radius: 0.75rem;
+  }
+
+  .app--home .destination-icon {
+    flex-basis: 2.25rem;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 0.55rem;
+    font-size: 1.05rem;
+  }
+
+  .app--home .link-card__title,
+  .app--home .personal-link__title {
+    font-size: 0.92rem;
+  }
+
+  .app--home .personal[data-organizing='true'] .personal-link-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .app--home .personal[data-organizing='true'] .personal-link__controls {
+    width: auto;
+  }
+}
+
+.personal-category__controls .personal__button:hover:not(:disabled),
+.personal-link__controls .personal__button:hover:not(:disabled) {
+  color: var(--text);
+}
+
+/* Preserve base tokens separately: canvas and raised surfaces may need opposite
+   foregrounds. All fallbacks compute to the accepted light/dark values. */
+:root {
+  --theme-text: var(--text);
+  --theme-text-muted: var(--text-muted);
+  --theme-text-subtle: var(--text-subtle);
+  --theme-border: var(--border);
+  --theme-border-input: var(--border-input);
+  --theme-border-strong: var(--border-strong);
+  --theme-surface-raised: var(--surface-raised);
+  --theme-surface-muted: var(--surface-muted);
+  --theme-surface-sunken: var(--surface-sunken);
+  --theme-danger: var(--danger);
+}
+
+body {
+  background-color: var(--brand-page-background, var(--surface));
+  color: var(--brand-page-text, var(--text));
+}
+
+.app {
+  --text: var(--brand-page-text, var(--theme-text));
+  --text-muted: var(--brand-page-muted, var(--theme-text-muted));
+  --text-subtle: var(--brand-page-subtle, var(--theme-text-subtle));
+  --border: var(--brand-page-border, var(--theme-border));
+  --border-input: var(--brand-page-input-border, var(--theme-border-input));
+  --border-strong: var(--brand-page-input-border, var(--theme-border-strong));
+  --brand-ink: var(--brand-page-ink, var(--brand-primary));
+  --brand-focus: var(--brand-page-focus, var(--text));
+  --danger: var(--brand-page-danger, var(--theme-danger));
+  --focus-backing: var(--brand-page-background, var(--surface));
+  --surface-raised: var(--brand-surface, var(--theme-surface-raised));
+  --surface-muted: var(--brand-page-muted-fill, var(--theme-surface-muted));
+  --surface-sunken: var(--brand-surface-muted-fill, var(--theme-surface-sunken));
+  background-color: var(--brand-page-background, var(--surface));
+  color: var(--text);
+}
+
+.app :is(.link-card, .personal-link, .search, .login, .personal__form,
+  .admin-category, .admin__form, .users, .branding, .portability) {
+  --text: var(--brand-surface-text, var(--theme-text));
+  --text-muted: var(--brand-surface-muted, var(--theme-text-muted));
+  --text-subtle: var(--brand-surface-subtle, var(--theme-text-subtle));
+  --border: var(--brand-surface-border, var(--theme-border));
+  --border-input: var(--brand-surface-input-border, var(--theme-border-input));
+  --border-strong: var(--brand-surface-input-border, var(--theme-border-strong));
+  --brand-ink: var(--brand-surface-ink, var(--brand-primary));
+  --brand-focus: var(--brand-surface-focus, var(--text));
+  --danger: var(--brand-surface-danger, var(--theme-danger));
+  --focus-backing: var(--surface-raised);
+  --surface-muted: var(--brand-surface-muted-fill, var(--theme-surface-muted));
+  --brand-tint: var(--brand-surface-muted-fill, color-mix(in srgb, var(--brand-primary) 7%, var(--surface-raised)));
+  color: var(--text);
+}
+
+/* Wallpaper is ambient. A single tint protects the composition, not each label. */
+:root[data-brand-image='true'] body {
+  background-image: linear-gradient(
+    color-mix(in srgb, var(--brand-page-background, var(--surface)) var(--brand-image-opacity, 90%), transparent),
+    color-mix(in srgb, var(--brand-page-background, var(--surface)) var(--brand-image-opacity, 90%), transparent)),
+    var(--brand-background-image);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+:root[data-brand-image='true'] .app--home { background-color: transparent; }
+
+:root[data-brand-colors='true'] .app :focus-visible {
+  outline-color: var(--brand-focus);
+  box-shadow: 0 0 0 6px var(--focus-backing);
+}
+
+/* Configured accents are deliberate signals; default launcher styling is intact. */
+:root[data-brand-colors='true'] .app :is(.personal__button--primary, .admin__button--primary,
+  .branding__button--primary, .users__button--primary, .login__submit) {
+  background: var(--brand-primary);
+  border-color: var(--brand-primary);
+  color: var(--brand-on-primary);
+}
+:root[data-brand-colors='true'] .app :is(.personal__button--primary, .admin__button--primary,
+  .branding__button--primary, .users__button--primary, .login__submit):hover:not(:disabled) {
+  background: var(--brand-primary);
+  color: var(--brand-on-primary);
+  box-shadow: inset 0 0 0 2px var(--brand-on-primary);
+}
+:root[data-brand-colors='true'] .app .category-nav__item:hover { border-bottom-color: var(--brand-focus); }
+:root[data-brand-colors='true'] .app--home .destination-icon { color: var(--brand-ink); background: transparent; }
+:root[data-brand-colors='true'] .app .admin-tabs { background: transparent; }
+:root[data-brand-colors='true'] .app .admin-tabs__tab { color: var(--text-muted); }
+:root[data-brand-colors='true'] .app .admin-tabs__tab[aria-current='true'] {
+  color: var(--brand-ink); border-bottom-color: var(--brand-focus); background: transparent;
+}
+
+.app--login-required { display: flex; flex-direction: column; }
+.app--login-required .content { width: 100%; flex: 1; display: grid; align-content: center; padding-bottom: 5rem; }
+.app--login-required .login { width: min(100%, 26rem); margin-inline: auto; }
+
+.branding__color-controls {
+  display: grid;
+  grid-template-columns: 2.75rem minmax(0, 1fr) auto;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.branding__color-picker {
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: 0.2rem;
+  border: 1px solid var(--border-input);
+  border-radius: 0.4rem;
+  background-color: var(--surface-raised);
+  cursor: pointer;
+}
+
+.branding__color-reset {
+  font: inherit;
+  font-size: 0.8rem;
+  min-height: 2.75rem;
+  padding: 0.35rem 0.45rem;
+  border: 1px solid transparent;
+  border-radius: 0.4rem;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.branding__color-reset:hover:not(:disabled) { background: var(--surface-muted); }
+.branding__color-reset:disabled { opacity: 0.6; cursor: default; }
+.branding__color-picker:focus-visible,
+.branding__color-reset:focus-visible { outline: 3px solid var(--text); outline-offset: 2px; }
+.branding__asset-hint { font-size: 0.8rem; color: var(--text-subtle); }
+.branding__preview--background { width: 10rem; height: 4.5rem; object-fit: cover; padding: 0; }
+
+.branding__color-hint { font-size: 0.78rem; color: var(--text-subtle); }
+.branding__form { align-items: start; }
+.branding__starting-palettes { display: grid; gap: 0.5rem; margin-bottom: 0.75rem; }
+.branding__starting-palettes > div { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.branding__starting-palettes button {
+  font: inherit; font-size: 0.8rem; padding: 0.45rem 0.65rem; min-height: 2.5rem;
+  background: transparent; color: var(--text); border: 1px solid var(--border-input); border-radius: 0.4rem; cursor: pointer;
+}
+.branding__starting-palettes button:hover:not(:disabled) { background: var(--surface-muted); }
+.branding__live-preview { display: grid; gap: 0.35rem; margin-top: 0.75rem; }
+.branding-live-preview {
+  padding: 1rem; border: 1px solid var(--brand-page-border); border-radius: 0.5rem;
+  color: var(--brand-page-text); background-color: var(--brand-page-background);
+  background-image: linear-gradient(
+    color-mix(in srgb, var(--brand-page-background) var(--brand-image-opacity, 90%), transparent),
+    color-mix(in srgb, var(--brand-page-background) var(--brand-image-opacity, 90%), transparent)), var(--brand-background-image, none);
+  background-position: center; background-size: cover; background-repeat: no-repeat;
+}
+.branding-live-preview__identity { display: grid; grid-template-columns: auto 1fr; gap: 0.1rem 0.5rem; }
+.branding-live-preview__identity img { grid-row: span 2; width: 1.75rem; height: 1.75rem; object-fit: contain; }
+.branding-live-preview__identity strong, .branding-live-preview__identity > span { grid-column: -2; }
+.branding-live-preview__identity strong { font-size: 0.9rem; }
+.branding-live-preview__identity > span { font-size: 0.7rem; color: var(--brand-page-muted); }
+.branding-live-preview__search {
+  margin: 0.65rem auto; padding: 0.45rem 0.65rem; max-width: 18rem; font-size: 0.75rem;
+  color: var(--brand-surface-muted); background: var(--brand-surface); border: 1px solid var(--brand-surface-input-border); border-radius: 0.4rem;
+}
+.branding-live-preview__category { display: flex; justify-content: space-between; align-items: center; font-size: 0.75rem; }
+.branding-live-preview__category > span { background: var(--brand-primary); color: var(--brand-on-primary); padding: 0.3rem 0.5rem; border-radius: 0.3rem; }
+.branding-live-preview__cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.4rem; margin-top: 0.45rem; }
+.branding-live-preview__card { display: flex; align-items: center; gap: 0.4rem; padding: 0.65rem 0.5rem;
+  background: var(--brand-surface); color: var(--brand-surface-text); border: 1px solid var(--brand-surface-border); border-radius: 0.4rem; }
+.branding-live-preview__card > span { color: var(--brand-surface-ink); font-size: 0.8rem; }
+.branding-live-preview__card strong { font-size: 0.72rem; font-weight: 600; }
+
+@media (max-width: 40rem) {
+  .branding__color-controls { grid-template-columns: 2.75rem minmax(0, 1fr); }
+  .branding__color-reset { grid-column: 2; justify-self: start; min-height: 2.25rem; padding-inline: 0; }
+  .branding-live-preview__cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .branding-live-preview__card:last-child { display: none; }
+}
+
+@media (max-width: 40rem) {
+  .search {
+    margin-bottom: 1.35rem;
+  }
+
+  .personal {
+    padding-left: 0.65rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .personal__header {
+    align-items: center;
+  }
+
+  .personal__header-actions {
+    width: auto;
+  }
+
+  .personal__header-actions > .personal__button--primary {
+    flex: 0 0 auto;
+  }
+
+  .personal-category {
+    margin-bottom: 0;
+  }
+
+  .personal-category__controls,
+  .personal-link__controls {
+    gap: 0.15rem;
+  }
+
+  .personal-link {
+    padding-inline: 0.3rem;
+  }
+
+  .personal-link__main {
+    flex-wrap: nowrap;
+    gap: 0.25rem;
+  }
+
+  .personal-link__anchor {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  .personal-link__controls {
+    flex-wrap: wrap;
+  }
+}
+.users__pagination {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}

@@ -1,0 +1,34 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Local SQLite database files (never commit data)
+data/
+*.sqlite
+*.sqlite3
+*.sqlite-wal
+*.sqlite3-wal
+*.sqlite-shm
+*.sqlite3-shm
+
+# Vite cache
+.vite/
+
+# Test output
+coverage/
+
+# Environment files (local overrides only)
+.env
+.env.*
+!.env.example
+!.env.install.example
+
+# Logs
+*.log
+npm-debug.log*
+
+# Editor / OS noise
+.DS_Store
+Thumbs.db

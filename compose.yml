@@ -1,0 +1,41 @@
+# Single-application deployment (P6.3).
+#
+# Exactly one service and one named persistent volume. No database service, no
+# Redis, no reverse proxy: the application serves its own built React client and
+# its API from one origin.
+
+services:
+  app:
+    build:
+      context: .
+    image: navlume:local
+    restart: unless-stopped
+    ports:
+      # host:container. Change the host port if 3000 is already taken.
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 3000
+
+      # Both live on the single persistent volume below. Keeping the database and
+      # the uploads tree under one /data root preserves the verified P6.2 physical
+      # backup/restore layout.
+      DATABASE_PATH: /data/nav.sqlite
+      UPLOADS_DIR: /data/uploads
+
+      # Required. Compose fails clearly when either is unset rather than starting
+      # a half-configured instance.
+      #
+      # BETTER_AUTH_SECRET: generate with `openssl rand -base64 32`; never commit it.
+      # BETTER_AUTH_URL:    the exact browser-visible origin, e.g. https://nav.example.com
+      # Quoted because the required-value messages contain a colon.
+      BETTER_AUTH_SECRET: "${BETTER_AUTH_SECRET:?BETTER_AUTH_SECRET must be set. Generate one with: openssl rand -base64 32}"
+      BETTER_AUTH_URL: "${BETTER_AUTH_URL:?BETTER_AUTH_URL must be set to the browser-visible origin, e.g. https://nav.example.com}"
+    volumes:
+      # Named volume, so `docker compose down` preserves application data and
+      # `docker compose down -v` deletes it.
+      - navigation-data:/data
+
+volumes:
+  navigation-data:
