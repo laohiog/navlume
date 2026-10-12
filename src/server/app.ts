@@ -5,6 +5,7 @@ import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 
 import * as schema from '../db/schema.js';
 import type { Auth } from '../db/auth.js';
+import type { FirstRunSetup } from './first-run-setup.js';
 import { getPublicNavigation, getSiteAccessMode } from './public-navigation.js';
 import {
   DataPortabilityError,
@@ -56,6 +57,7 @@ import {
 export interface AppDependencies {
   db: BetterSQLite3Database<typeof schema>;
   auth: Auth;
+  setup?: FirstRunSetup;
   /**
    * Absolute path to the built client assets to serve in production.
    *
@@ -97,6 +99,7 @@ function registerHealthRoute(app: Hono, deps: AppDependencies): void {
  */
 export function createApp(deps: AppDependencies): Hono {
   const app = new Hono();
+  deps.setup?.register(app);
 
   /**
    * Public navigation.

@@ -178,7 +178,7 @@ interface PersonalMutationError {
  * is no polling, interval, websocket, or client-side sync engine: the server
  * database is the source of truth and this component only re-reads it.
  */
-export function App() {
+export function App({ initialLogin = false }: { initialLogin?: boolean } = {}) {
   const [publicFetch, setPublicFetch] = useState<PublicFetch>({
     sessionKey: null, accessMode: null, state: { status: 'loading' },
   });
@@ -189,7 +189,7 @@ export function App() {
   const [isPersonalMutating, setIsPersonalMutating] = useState(false);
   const [personalMutationError, setPersonalMutationError] =
     useState<PersonalMutationError | null>(null);
-  const [isLoginVisible, setIsLoginVisible] = useState(false);
+  const [isLoginVisible, setIsLoginVisible] = useState(initialLogin);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);

@@ -108,7 +108,8 @@ On the first start the container:
 
 1. validates the production configuration;
 2. applies pending Drizzle migrations to `/data/nav.sqlite`;
-3. starts the HTTP server.
+3. prints a random, one-time setup code if there are no users;
+4. starts the HTTP server.
 
 Migration runs **before** the server begins listening, so a migration failure
 stops the container instead of serving a half-migrated schema. A fresh volume
@@ -144,8 +145,19 @@ not depend on `BETTER_AUTH_URL` being reachable from inside the container.
 
 ## 6. Create the first administrator
 
-A fresh installation has **no administrator**, and public sign-up is disabled. Create
-the first one with a one-shot command:
+A fresh installation has **no administrator**, and public sign-up is disabled.
+For this source candidate, read `[setup] First-run initialization code` in
+`docker compose logs app`, open `BETTER_AUTH_URL`, and create the first administrator
+on the welcome page. Then choose **进入登录页面** to sign in normally. The code is
+valid for 60 minutes; a restart generates a new code on an empty instance and
+invalidates the old one. Creation closes web setup; any existing user prevents it.
+Protect container-log access and never share the code. No default password exists.
+
+**v0.1.0 images do not contain web setup.** This requires a later reviewed release;
+this change does not publish an image. See [Installation](INSTALL.md) for the full
+flow and version distinction.
+
+The CLI remains available as a fallback (required for v0.1.0). Use one-shot variables:
 
 ```bash
 docker compose run --rm \

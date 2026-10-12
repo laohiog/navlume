@@ -20,6 +20,7 @@ import { createAuth } from '../db/auth.js';
 import { createDatabase } from '../db/index.js';
 import { runMigrations } from '../db/migrate.js';
 import { createApp } from './app.js';
+import { createFirstRunSetup } from './first-run-setup.js';
 import {
   DEVELOPMENT_SECRET_WARNING,
   RuntimeConfigError,
@@ -99,6 +100,7 @@ function main(): void {
   const app = createApp({
     db: database.db,
     auth,
+    setup: createFirstRunSetup(database, auth, config.authBaseUrl),
     ...(config.isProduction ? { staticRoot: STATIC_ROOT } : {}),
   });
 

@@ -4,10 +4,14 @@
 仅支持 **Linux AMD64 / x86-64**。ARM64 尚未构建和运行验证，标记为
 **UNVERIFIED**，请勿在 ARM NAS 上把模拟运行当作正式支持。
 
-本说明对应 Navlume **v0.1.0**。公开源码：[laohiog/navlume](https://github.com/laohiog/navlume)。
+已发布版本为 Navlume **v0.1.0**。公开源码：[laohiog/navlume](https://github.com/laohiog/navlume)。
 镜像为 `ghcr.io/laohiog/navlume`；准确的源码 Commit、SHA Tag 和 Registry Digest
 见 [v0.1.0 发行说明](https://github.com/laohiog/navlume/releases/tag/v0.1.0)。
 使用发行说明中的已验证镜像引用，不能使用模板占位符启动。
+
+**版本提示：v0.1.0 镜像不包含首次网页创建管理员。** 本文第 3 节的网页流程
+适用于本次源码 Candidate，以及后续经审核并正式发布的版本；目前没有因此
+发布新镜像。安装 v0.1.0 时使用第 3 节保留的 CLI 备用方式。
 
 ## 1. 准备安装文件
 
@@ -104,6 +108,31 @@ curl http://localhost:3000/api/health
 
 ## 3. 创建首位管理员并登录
 
+包含新功能的版本推荐流程：**Compose 部署 → 容器日志获取初始化验证码 →
+浏览器创建管理员 → 登录**。
+
+1. 在 NAS 的 **Docker → 容器 → 日志**（群晖 Container Manager 或威联通
+   Container Station 中的 app 容器日志）找到 `[setup] First-run initialization code`。
+   也可执行 `docker compose -f compose.install.yml logs app`。
+2. 浏览器打开配置的 `BETTER_AUTH_URL`，看到“欢迎使用 Navlume”。填写管理员
+   用户名、邮箱、密码、确认密码和一次性初始化验证码，点击“创建管理员账户”。
+   用户名为 3–30 位字母、数字、下划线或点；密码为 8–128 位。
+3. 创建成功后点击“进入登录页面”，使用新用户名和密码登录。然后在管理后台
+   创建普通用户。
+
+没有默认管理员密码。验证码仅在没有任何用户的全新实例启动时随机生成，
+只输出一次到容器日志，有效期 60 分钟。**不要分享验证码，并限制容器日志
+的查看权限**；日志读取权限相当于首次管理员创建授权。验证码不由网页返回。
+过期后重启 app 并查看新的日志；重启前的验证码失效。错误验证码尝试过多时，
+等待一分钟再试。
+
+创建成功后网页初始化立即关闭。已有任何用户的实例（包括只有普通用户的
+实例）不会重新开放此入口；CLI 已创建管理员时也会关闭。首次初始化不等于
+公开注册。非 localhost 访问仍须可信 HTTPS，与第 1 节 Origin 和 Secure Cookie
+规则一致。
+
+### CLI 备用方式（v0.1.0 必须使用）
+
 在服务器/NAS 的 Bash 终端执行。先把示例邮箱和用户名改为自己的值：
 
 ```bash
@@ -140,7 +169,8 @@ YAML。确认应用的环境变量配置提供了 `.env` 中的值，并在部�
 
 NAS 图形界面的环境文件和私有 registry 凭据处理随版本而异。若界面不能
 读取 `.env` 或私有 GHCR 登录，使用 NAS SSH 终端按第 2 节启动同一份文件，
-不要建立第二个应用项目。管理员初始化、备份和恢复也可在 NAS SSH 终端执行。
+不要建立第二个应用项目。包含新功能的版本可在容器日志中获取验证码，通过
+浏览器创建管理员；CLI 备用初始化、备份和恢复也可在 NAS SSH 终端执行。
 始终保留相同项目名 `navigation`；如果一开始使用 `-p` 指定其他名称，之后
 所有命令都必须使用该名称。换项目名会指向另一个数据卷，看起来像空安装。
 

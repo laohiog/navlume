@@ -22,7 +22,7 @@ import { pathToFileURL } from 'node:url';
 
 import { count, eq } from 'drizzle-orm';
 
-import { createAuth } from '../db/auth.js';
+import { createAuth, type Auth } from '../db/auth.js';
 import { createDatabase, type DatabaseHandle } from '../db/index.js';
 import { runMigrations } from '../db/migrate.js';
 import { user } from '../db/auth-schema.js';
@@ -112,16 +112,40 @@ export async function bootstrapAdmin(
   authSecret: string,
   authBaseUrl: string,
 ): Promise<BootstrapResult> {
-  if (countAdmins(handle) > 0) {
-    return {
-      status: 'refused',
-      message: 'an administrator already exists; refusing to create another bootstrap admin',
-    };
-  }
-
   const auth = createAuth({ db: handle.db, secret: authSecret, baseURL: authBaseUrl });
+  return createFirstAdministrator(handle, auth, input, false);
+}
 
+const activeCreations = new WeakSet<DatabaseHandle['sqlite']>();
+
+/** SQLite owns the check/create boundary, including a CLI in another process.
+ * Keep the transaction open across Better Auth's asynchronous password hashing:
+ * a credential failure must roll back the user too. Same-connection callers are
+ * refused before entering the transaction rather than joining its uncommitted state.
+ */
+export async function createFirstAdministrator(
+  handle: DatabaseHandle,
+  auth: Auth,
+  input: BootstrapAdminInput,
+  requireEmpty: boolean,
+): Promise<BootstrapResult> {
+  if (activeCreations.has(handle.sqlite)) {
+    return { status: 'refused', message: 'administrator initialization is already in progress' };
+  }
+  activeCreations.add(handle.sqlite);
+  let began = false;
   try {
+    handle.sqlite.exec('BEGIN IMMEDIATE');
+    began = true;
+    const hasUsers = handle.db.select({ id: user.id }).from(user).limit(1).get() !== undefined;
+    if ((requireEmpty && hasUsers) || countAdmins(handle) > 0) {
+      handle.sqlite.exec('ROLLBACK');
+      began = false;
+      return {
+        status: 'refused',
+        message: 'instance already provisioned; refusing to create another bootstrap admin (administrator already exists or users present)',
+      };
+    }
     const created = await auth.api.createUser({
       body: {
         email: input.email,
@@ -131,13 +155,14 @@ export async function bootstrapAdmin(
         data: { username: input.username, emailVerified: true },
       },
     });
-
+    handle.sqlite.exec('COMMIT');
+    began = false;
     return { status: 'created', userId: created.user.id, username: input.username };
-  } catch (error) {
-    // Never echo the password or the full Better Auth error payload; the operator
-    // needs to know it failed and why in general terms.
-    const message = error instanceof Error ? error.message : String(error);
-    return { status: 'failed', message: `failed to create administrator: ${message.slice(0, 200)}` };
+  } catch {
+    if (began) handle.sqlite.exec('ROLLBACK');
+    return { status: 'failed', message: 'failed to create administrator; check input and database availability' };
+  } finally {
+    activeCreations.delete(handle.sqlite);
   }
 }
 

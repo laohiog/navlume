@@ -66,7 +66,27 @@ curl http://localhost:3000/api/health
 The application applies migrations before serving requests. A fresh installation
 has no default account or demo navigation. Public sign-up is disabled.
 
-Create the first administrator once from a Bash terminal, using your own email:
+For this source candidate, open `BETTER_AUTH_URL` in your browser, read the
+one-time initialization code from the container logs, and create your first
+administrator on the welcome page:
+
+```bash
+docker compose logs app
+```
+
+The `[setup] First-run initialization code` is random, valid for 60 minutes, and
+printed once at startup only when the database has no users. Do not share it;
+restrict access to container logs. If it expires, restart the container and use
+the new code; the old one stops working. After creation, choose **进入登录页面**
+and sign in normally. This does not enable public registration or supply any
+default administrator password. Existing instances with any users cannot use
+web setup.
+
+**The published v0.1.0 image does not include web setup.** It requires a later
+reviewed release; no new image is published by this source change. v0.1.0 users
+must use the CLI fallback below.
+
+CLI fallback (retained), using your own email:
 
 ```bash
 read -r -s -p 'First administrator password: ' BOOTSTRAP_ADMIN_PASSWORD; printf '\n'
@@ -104,9 +124,12 @@ Use Node.js 24 and npm. Copy `.env.example` to `.env`; the development origin is
 ```bash
 npm ci
 npm run db:migrate
-npm run admin:create    # provide one-shot BOOTSTRAP_ADMIN_* variables
 npm run dev
 ```
+
+Read the `[setup]` code in the server output and create the administrator at
+`http://localhost:5173`. Alternatively, use `npm run admin:create` with one-shot
+`BOOTSTRAP_ADMIN_*` variables.
 
 `npm run db:seed` optionally inserts generic demo content in an empty development
 database. Production startup never seeds it.
