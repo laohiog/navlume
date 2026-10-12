@@ -1,4 +1,4 @@
-# Navlume Deployment
+# Navlume v0.1.1 Deployment
 
 Self-hosted deployment of Navlume as a **single
 application container**.
@@ -8,8 +8,11 @@ Linux/NAS installation using `compose.install.yml`, see [INSTALL.md](./INSTALL.m
 
 Public source: [laohiog/navlume](https://github.com/laohiog/navlume).
 The Linux AMD64 image is `ghcr.io/laohiog/navlume`. See the
-[v0.1.0 release notes](https://github.com/laohiog/navlume/releases/tag/v0.1.0) for
-the verified source commit, image SHA tag and registry Digest.
+[v0.1.1 release page](https://github.com/laohiog/navlume/releases/tag/v0.1.1) for
+the verified source commit, image SHA tag and Registry Digest. Use the v0.1.1
+installation files and image only when that release provides the verified
+artifacts; otherwise wait for publication. This source documentation does not
+announce publication. Source builds use the v0.1.1 source or reviewed checkpoint.
 
 ---
 
@@ -146,18 +149,20 @@ not depend on `BETTER_AUTH_URL` being reachable from inside the container.
 ## 6. Create the first administrator
 
 A fresh installation has **no administrator**, and public sign-up is disabled.
-For this source candidate, read `[setup] First-run initialization code` in
+For Navlume v0.1.1, read `[setup] First-run initialization code` in
 `docker compose logs app`, open `BETTER_AUTH_URL`, and create the first administrator
 on the welcome page. Then choose **进入登录页面** to sign in normally. The code is
 valid for 60 minutes; a restart generates a new code on an empty instance and
 invalidates the old one. Creation closes web setup; any existing user prevents it.
 Protect container-log access and never share the code. No default password exists.
 
-**v0.1.0 images do not contain web setup.** This requires a later reviewed release;
-this change does not publish an image. See [Installation](INSTALL.md) for the full
-flow and version distinction.
+**Historical compatibility:** v0.1.0 images do not contain web setup. See the
+[v0.1.1 installation guide](INSTALL.md) for Docker Compose → container logs →
+one-time code → web administrator setup → login, and the release availability
+requirements above.
 
-The CLI remains available as a fallback (required for v0.1.0). Use one-shot variables:
+The CLI remains an optional fallback in v0.1.1 (required for first administrator
+creation on v0.1.0). Use one-shot variables:
 
 ```bash
 docker compose run --rm \

@@ -1,17 +1,19 @@
-# Navlume Docker 安装（Linux / NAS）
+# Navlume v0.1.1 Docker 安装（Linux / NAS）
 
 安装者只需要 Docker、Compose 和安装文件，不需要源码、Node.js 或 npm。
 仅支持 **Linux AMD64 / x86-64**。ARM64 尚未构建和运行验证，标记为
 **UNVERIFIED**，请勿在 ARM NAS 上把模拟运行当作正式支持。
 
-已发布版本为 Navlume **v0.1.0**。公开源码：[laohiog/navlume](https://github.com/laohiog/navlume)。
+本文用于安装 Navlume **v0.1.1**，包含首次网页创建管理员功能。
+公开源码：[laohiog/navlume](https://github.com/laohiog/navlume)。
 镜像为 `ghcr.io/laohiog/navlume`；准确的源码 Commit、SHA Tag 和 Registry Digest
-见 [v0.1.0 发行说明](https://github.com/laohiog/navlume/releases/tag/v0.1.0)。
-使用发行说明中的已验证镜像引用，不能使用模板占位符启动。
+以 [v0.1.1 发行说明](https://github.com/laohiog/navlume/releases/tag/v0.1.1) 为准。
+仅在该版本正式发布、提供安装文件及已验证镜像引用后使用本流程；如果发行
+页面或文件尚不可用，请等待发布。本文本身不代表 v0.1.1 已经发布。
+使用该版本发行说明中的已验证镜像引用，不能使用模板占位符启动。
 
-**版本提示：v0.1.0 镜像不包含首次网页创建管理员。** 本文第 3 节的网页流程
-适用于本次源码 Candidate，以及后续经审核并正式发布的版本；目前没有因此
-发布新镜像。安装 v0.1.0 时使用第 3 节保留的 CLI 备用方式。
+**历史兼容说明：v0.1.0 镜像不包含首次网页创建管理员。** 已有 v0.1.0 实例
+可以按第 6 节保留数据升级；CLI 管理员创建方式作为备用保留。
 
 ## 1. 准备安装文件
 
@@ -22,14 +24,22 @@ docker info
 docker compose version
 ```
 
-使用同一版本的 [compose.install.yml](https://raw.githubusercontent.com/laohiog/navlume/v0.1.0/compose.install.yml)、
-[.env.install.example](https://raw.githubusercontent.com/laohiog/navlume/v0.1.0/.env.install.example)
-和本说明，放在独立目录 `navigation`。无需克隆仓库；也可下载
-[v0.1.0 源码压缩包](https://github.com/laohiog/navlume/archive/refs/tags/v0.1.0.zip)，
-只取出这两个安装文件。
+从 v0.1.1 发行页面下载同一版本的三份附件：
+
+- [compose.install.yml](https://github.com/laohiog/navlume/releases/download/v0.1.1/compose.install.yml)
+- [default.env.install.example](https://github.com/laohiog/navlume/releases/download/v0.1.1/default.env.install.example)
+- [INSTALL.md](https://github.com/laohiog/navlume/releases/download/v0.1.1/INSTALL.md)（本说明）
+
+放在独立目录 `navigation`。发行附件中的 `default.env.install.example` 需先
+改名为 `.env.install.example`。无需克隆仓库；也可在发布后下载
+[v0.1.1 源码压缩包](https://github.com/laohiog/navlume/archive/refs/tags/v0.1.1.zip)，
+取出 `compose.install.yml`、`.env.install.example` 和 `docs/INSTALL.md`。
+源码压缩包保留原始环境模板文件名，不需要改名。
 
 ```bash
 cd navigation
+# 使用发行附件时先改名；源码压缩包方式跳过这一行
+mv default.env.install.example .env.install.example
 cp .env.install.example .env
 chmod 600 .env
 openssl rand -base64 32
@@ -39,7 +49,7 @@ openssl rand -base64 32
 
 | 配置 | 填什么 |
 | --- | --- |
-| `NAV_IMAGE` | 发布者给出的 `ghcr.io/laohiog/navlume:sha-<完整Commit>`；更推荐 `ghcr.io/laohiog/navlume@sha256:<Digest>` |
+| `NAV_IMAGE` | v0.1.1 发行说明中的已验证 `ghcr.io/laohiog/navlume:sha-<该版本完整源码Commit>`；更推荐其 `ghcr.io/laohiog/navlume@sha256:<Registry Digest>`，不要复用 v0.1.0 的镜像引用 |
 | `BETTER_AUTH_SECRET` | 上一步生成的随机密钥；妥善保存，升级时保留 |
 | `BETTER_AUTH_URL` | 浏览器实际访问的准确 Origin（协议、主机、端口），不加页面路径 |
 | `NAV_BIND_IP` | 默认 `127.0.0.1`；只允许本机访问应用端口 |
@@ -108,8 +118,8 @@ curl http://localhost:3000/api/health
 
 ## 3. 创建首位管理员并登录
 
-包含新功能的版本推荐流程：**Compose 部署 → 容器日志获取初始化验证码 →
-浏览器创建管理员 → 登录**。
+v0.1.1 首次安装的推荐流程：**Docker Compose → 容器日志 → 一次性初始化验证码 →
+网页创建管理员 → 登录**。
 
 1. 在 NAS 的 **Docker → 容器 → 日志**（群晖 Container Manager 或威联通
    Container Station 中的 app 容器日志）找到 `[setup] First-run initialization code`。
@@ -131,7 +141,10 @@ curl http://localhost:3000/api/health
 公开注册。非 localhost 访问仍须可信 HTTPS，与第 1 节 Origin 和 Secure Cookie
 规则一致。
 
-### CLI 备用方式（v0.1.0 必须使用）
+### CLI 备用方式（可选）
+
+v0.1.1 推荐使用上面的网页流程；需要时仍可使用 CLI。历史版本 v0.1.0
+没有网页初始化，创建首位管理员必须使用 CLI。
 
 在服务器/NAS 的 Bash 终端执行。先把示例邮箱和用户名改为自己的值：
 
@@ -169,7 +182,7 @@ YAML。确认应用的环境变量配置提供了 `.env` 中的值，并在部�
 
 NAS 图形界面的环境文件和私有 registry 凭据处理随版本而异。若界面不能
 读取 `.env` 或私有 GHCR 登录，使用 NAS SSH 终端按第 2 节启动同一份文件，
-不要建立第二个应用项目。包含新功能的版本可在容器日志中获取验证码，通过
+不要建立第二个应用项目。v0.1.1 可在容器日志中获取验证码，通过
 浏览器创建管理员；CLI 备用初始化、备份和恢复也可在 NAS SSH 终端执行。
 始终保留相同项目名 `navigation`；如果一开始使用 `-p` 指定其他名称，之后
 所有命令都必须使用该名称。换项目名会指向另一个数据卷，看起来像空安装。

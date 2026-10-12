@@ -17,9 +17,12 @@ inside each instance; existing brand settings and demo defaults are retained.
 ## Release availability
 
 Source repository: [laohiog/navlume](https://github.com/laohiog/navlume).
-The first release is **v0.1.0**, with a Linux AMD64 image at
-`ghcr.io/laohiog/navlume`. Use the verified image SHA tag or registry Digest in the
-[v0.1.0 release notes](https://github.com/laohiog/navlume/releases/tag/v0.1.0).
+This installation guide targets **v0.1.1**, including first-run web administrator
+setup, with a Linux AMD64 image at `ghcr.io/laohiog/navlume`. Install it only when
+the [v0.1.1 release page](https://github.com/laohiog/navlume/releases/tag/v0.1.1)
+provides the installation files and a verified image SHA tag or Registry Digest.
+If those artifacts are unavailable, wait for publication. This source documentation
+does not announce that v0.1.1 has been published.
 The Git tag identifies the source commit; the release notes bind that commit to
 the published image and installation verification.
 
@@ -44,8 +47,10 @@ ARM64 and real NAS hardware are unverified.
 
 For installation without Node.js or a source build, see the
 [Linux/NAS installation guide](./docs/INSTALL.md). It uses `compose.install.yml`
-and `.env.install.example`. Supply the maintainer's published fixed version or
-registry Digest from the release notes; the example image reference is a placeholder.
+and `.env.install.example`. Download the v0.1.1 installation attachments from the
+release page; rename `default.env.install.example` to `.env.install.example`.
+Supply the verified v0.1.1 SHA tag or Registry Digest from that release's notes;
+the example image reference is a placeholder.
 
 To build this source locally, create `.env` beside `compose.yml`:
 
@@ -66,7 +71,7 @@ curl http://localhost:3000/api/health
 The application applies migrations before serving requests. A fresh installation
 has no default account or demo navigation. Public sign-up is disabled.
 
-For this source candidate, open `BETTER_AUTH_URL` in your browser, read the
+For Navlume v0.1.1, open `BETTER_AUTH_URL` in your browser, read the
 one-time initialization code from the container logs, and create your first
 administrator on the welcome page:
 
@@ -82,9 +87,9 @@ and sign in normally. This does not enable public registration or supply any
 default administrator password. Existing instances with any users cannot use
 web setup.
 
-**The published v0.1.0 image does not include web setup.** It requires a later
-reviewed release; no new image is published by this source change. v0.1.0 users
-must use the CLI fallback below.
+**Historical compatibility:** v0.1.0 images do not include web setup. The CLI
+fallback remains available for v0.1.1 and is required for first administrator
+creation on v0.1.0.
 
 CLI fallback (retained), using your own email:
 
