@@ -335,8 +335,8 @@ storage, never in installation files or the application image.
 
 The Docker context is an allowlist of actual build inputs. It excludes local
 configuration, Git metadata, databases, uploads, backups, tests and internal
-documents. No registry publication, visibility change or GitHub-hosted execution
-is performed by a build-only workflow run.
+documents. A build-only workflow run does not publish an image or change
+repository/package visibility.
 
 References: [Docker Actions build guidance](https://docs.docker.com/build/ci/github-actions/push-multi-registries/),
 [GHCR authentication and digest pulls](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry).
