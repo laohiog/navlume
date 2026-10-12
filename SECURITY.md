@@ -1,13 +1,11 @@
 # Security reporting
 
-For the planned `laohiog/navlume` repository, the intended private reporting
-channel is GitHub Private Vulnerability Reporting. Before opening the repository
-for reports, the maintainer must enable and verify that channel.
+Navlume uses GitHub Private Vulnerability Reporting in
+[laohiog/navlume](https://github.com/laohiog/navlume/security/advisories).
 
-Once enabled, use **Security → Report a vulnerability** in the Navlume repository
+Use **Security → Report a vulnerability** in the Navlume repository
 to submit a private report. Include the affected version, impact and minimal
-reproduction steps with sensitive data removed. This preparation Candidate does
-not claim that the future repository or reporting channel already exists.
+reproduction steps with sensitive data removed.
 
 If the private reporting option is unavailable, do not disclose the vulnerability
 in a public issue. Wait for a verified private contact or reporting channel from

@@ -4,9 +4,10 @@
 仅支持 **Linux AMD64 / x86-64**。ARM64 尚未构建和运行验证，标记为
 **UNVERIFIED**，请勿在 ARM NAS 上把模拟运行当作正式支持。
 
-本文件属于 Navlume 首次公开发行准备。计划仓库为 `laohiog/navlume`，计划镜像为
-`ghcr.io/laohiog/navlume`；本 Candidate 不表示仓库已创建或镜像已发布。正式安装前，
-必须取得发布者提供的已审查公开版本 Tag 或 Digest，不能使用下面的占位符启动。
+本说明对应 Navlume **v0.1.0**。公开源码：[laohiog/navlume](https://github.com/laohiog/navlume)。
+镜像为 `ghcr.io/laohiog/navlume`；准确的源码 Commit、SHA Tag 和 Registry Digest
+见 [v0.1.0 发行说明](https://github.com/laohiog/navlume/releases/tag/v0.1.0)。
+使用发行说明中的已验证镜像引用，不能使用模板占位符启动。
 
 ## 1. 准备安装文件
 
@@ -17,9 +18,11 @@ docker info
 docker compose version
 ```
 
-从发布者取得同一个已发布版本的 `compose.install.yml`、`.env.install.example`
-和本说明，放在一个独立目录，例如 `navigation`。无需克隆仓库。请等待维护者
-确认公开仓库和镜像可用，再取得同一版本的安装文件。
+使用同一版本的 [compose.install.yml](https://raw.githubusercontent.com/laohiog/navlume/v0.1.0/compose.install.yml)、
+[.env.install.example](https://raw.githubusercontent.com/laohiog/navlume/v0.1.0/.env.install.example)
+和本说明，放在独立目录 `navigation`。无需克隆仓库；也可下载
+[v0.1.0 源码压缩包](https://github.com/laohiog/navlume/archive/refs/tags/v0.1.0.zip)，
+只取出这两个安装文件。
 
 ```bash
 cd navigation

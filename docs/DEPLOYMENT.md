@@ -6,9 +6,10 @@ application container**.
 This page retains the developer/source-build path (`compose.yml`). For source-free
 Linux/NAS installation using `compose.install.yml`, see [INSTALL.md](./INSTALL.md).
 
-A source build can be installed from this Candidate. The planned public repository
-is `laohiog/navlume`; the planned registry image is `ghcr.io/laohiog/navlume`.
-Neither identifier is a claim that a public release already exists.
+Public source: [laohiog/navlume](https://github.com/laohiog/navlume).
+The Linux AMD64 image is `ghcr.io/laohiog/navlume`. See the
+[v0.1.0 release notes](https://github.com/laohiog/navlume/releases/tag/v0.1.0) for
+the verified source commit, image SHA tag and registry Digest.
 
 ---
 
@@ -296,11 +297,10 @@ a stray file on a fresh volume.
 
 ## Distribution maintainer workflow
 
-The planned repository is `laohiog/navlume`. Initialize it later from the reviewed
-public source snapshot, without copying private Git metadata, branches or tags.
-The first public commit will have its own SHA; never use a private-repository SHA
-as the final public release revision. Repository creation, push and publication
-require separate authorization after independent review.
+The repository is `laohiog/navlume`. Its initial commit was created from the reviewed
+public source snapshot with no private Git metadata, branches or tags. Release
+revisions refer to this public history. Publication requires an independently
+reviewed source revision and explicit maintainer authorization.
 
 `.github/workflows/docker-image.yml` runs only on manual dispatch. Its repository
 guard refuses execution outside `laohiog/navlume`. A push, merge or tag does not
@@ -336,7 +336,7 @@ storage, never in installation files or the application image.
 The Docker context is an allowlist of actual build inputs. It excludes local
 configuration, Git metadata, databases, uploads, backups, tests and internal
 documents. No registry publication, visibility change or GitHub-hosted execution
-is performed by this preparation task.
+is performed by a build-only workflow run.
 
 References: [Docker Actions build guidance](https://docs.docker.com/build/ci/github-actions/push-multi-registries/),
 [GHCR authentication and digest pulls](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry).

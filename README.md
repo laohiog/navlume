@@ -16,10 +16,12 @@ inside each instance; existing brand settings and demo defaults are retained.
 
 ## Release availability
 
-This source Candidate prepares the first Navlume public release. The planned
-repository is `laohiog/navlume`, and the planned image is `ghcr.io/laohiog/navlume`.
-The repository and image are not advertised as available yet. Wait for a maintainer
-release announcement before downloading from those targets or pulling an image.
+Source repository: [laohiog/navlume](https://github.com/laohiog/navlume).
+The first release is **v0.1.0**, with a Linux AMD64 image at
+`ghcr.io/laohiog/navlume`. Use the verified image SHA tag or registry Digest in the
+[v0.1.0 release notes](https://github.com/laohiog/navlume/releases/tag/v0.1.0).
+The Git tag identifies the source commit; the release notes bind that commit to
+the published image and installation verification.
 
 No Git history or runtime data is needed to install this source snapshot.
 
@@ -43,9 +45,9 @@ ARM64 and real NAS hardware are unverified.
 For installation without Node.js or a source build, see the
 [Linux/NAS installation guide](./docs/INSTALL.md). It uses `compose.install.yml`
 and `.env.install.example`. Supply the maintainer's published fixed version or
-registry Digest after release; the example image reference is a placeholder.
+registry Digest from the release notes; the example image reference is a placeholder.
 
-To build this source Candidate locally, create `.env` beside `compose.yml`:
+To build this source locally, create `.env` beside `compose.yml`:
 
 ```dotenv
 BETTER_AUTH_SECRET=<generate-with-openssl-rand-base64-32>
