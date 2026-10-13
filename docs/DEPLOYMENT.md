@@ -10,9 +10,16 @@ Public source: [laohiog/navlume](https://github.com/laohiog/navlume).
 The Linux AMD64 image is `ghcr.io/laohiog/navlume`. See the
 [v0.1.1 release page](https://github.com/laohiog/navlume/releases/tag/v0.1.1) for
 the verified source commit, image SHA tag and Registry Digest. Use the v0.1.1
-installation files and image only when that release provides the verified
-artifacts; otherwise wait for publication. This source documentation does not
-announce publication. Source builds use the v0.1.1 source or reviewed checkpoint.
+installation files and image from that published release. This working branch
+contains an unreleased LAN integration candidate; its placeholder image is not
+available and the v0.1.1 image cannot enable LAN mode. Source builds use the
+reviewed source checkpoint.
+
+The candidate's standalone `compose.lan.yml` explicitly sets `INSTALL_MODE=lan-http`,
+accepts one exact RFC1918 IPv4 HTTP origin and supports browser creation without a
+log code. Its automatically persisted key is included in full uploads backups.
+HTTP has no transport encryption; private-IP validation does not replace a firewall.
+See [INSTALL.md](./INSTALL.md) for the LAN limitations and recovery instructions.
 
 ---
 
@@ -75,9 +82,9 @@ BETTER_AUTH_URL=http://localhost:3000
 request `Origin` against it for cookie-bearing requests, so a mismatch breaks
 sign-in even though the container itself is healthy.
 
-> ### Authentication cookies are always `Secure` in production
+> ### Standard production authentication cookies are always `Secure`
 >
-> The container runs `NODE_ENV=production`, so authentication cookies are issued
+> In standard mode the container runs `NODE_ENV=production`, and cookies are issued
 > with `Secure`, `HttpOnly`, and `SameSite=Lax`, under the `__Secure-` name prefix.
 > This is set explicitly rather than derived from `BETTER_AUTH_URL`, so it cannot be
 > downgraded by the origin value.
@@ -87,7 +94,7 @@ sign-in even though the container itself is healthy.
 > but a plain-HTTP deployment on any other hostname **will not be able to sign in**,
 > because the browser will refuse to store the cookie.
 >
-> **For any non-localhost deployment, terminate TLS in front of this container and
+> **For any standard non-localhost deployment, terminate TLS in front of this container and
 > set `BETTER_AUTH_URL` to the `https://` origin.** See §9.
 
 Do not commit `.env`. It is already covered by `.gitignore`.
@@ -271,7 +278,7 @@ rules, and the meaning of each exit code.
 ## 9. Internet-facing HTTPS
 
 The application serves plain HTTP inside the container. **Its authentication cookies
-are always `Secure` in production** (see §3), which means a browser will only accept
+are always `Secure` in standard production** (see §3), which means a browser will only accept
 them from an HTTPS origin. `http://localhost` is the one exception, because browsers
 treat it as a secure context.
 
@@ -286,8 +293,8 @@ Terminating TLS at the proxy and forwarding plain HTTP to the container is the
 intended topology: the `Secure` flag is enforced by the application regardless, so
 sign-in works over the HTTPS origin while the internal hop stays simple.
 
-A plain-HTTP deployment on a non-localhost hostname is **not** a supported
-production configuration — the browser rejects the session cookie and sign-in
+A plain-HTTP deployment on a non-localhost hostname in standard mode is **not** a supported
+login configuration — the browser rejects the session cookie and sign-in
 silently fails. No proxy is bundled with this project, and none is needed for a
 localhost trial or for HTTPS terminated by your own proxy.
 
@@ -298,15 +305,16 @@ localhost trial or for HTTPS terminated by your own proxy.
 | Variable | Required | Purpose |
 |----------|----------|---------|
 | `NODE_ENV` | Docker | `production` enables production validation and static serving |
+| `INSTALL_MODE` | Optional | `standard` default; explicit `lan-http` for private IPv4 HTTP only |
 | `HOST` | Docker | Bind interface (`0.0.0.0` in the container) |
 | `PORT` | Docker | Bind port (`3000` in the container) |
 | `DATABASE_PATH` | Docker | `/data/nav.sqlite` |
 | `UPLOADS_DIR` | Docker | `/data/uploads` |
-| `BETTER_AUTH_SECRET` | **Production** | Signing secret; never commit it |
+| `BETTER_AUTH_SECRET` | **Standard production** | Signing secret; LAN persists/generates it automatically |
 | `BETTER_AUTH_URL` | **Production** | Browser-visible origin |
 | `BOOTSTRAP_ADMIN_*` | One-shot | First administrator creation only |
 
-Invalid `PORT`, a missing secret, or a malformed `BETTER_AUTH_URL` stop the
+Invalid `PORT`, a missing standard-mode secret, or a malformed `BETTER_AUTH_URL` stop the
 container before it creates a database, so a misconfigured deployment cannot leave
 a stray file on a fresh volume.
 

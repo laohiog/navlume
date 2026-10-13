@@ -8,14 +8,134 @@
 公开源码：[laohiog/navlume](https://github.com/laohiog/navlume)。
 镜像为 `ghcr.io/laohiog/navlume`；准确的源码 Commit、SHA Tag 和 Registry Digest
 以 [v0.1.1 发行说明](https://github.com/laohiog/navlume/releases/tag/v0.1.1) 为准。
-仅在该版本正式发布、提供安装文件及已验证镜像引用后使用本流程；如果发行
-页面或文件尚不可用，请等待发布。本文本身不代表 v0.1.1 已经发布。
+v0.1.1 已发布，源码 Commit 为 `699a16013eaa12b2a48708abd367dc5b6a73c361`。
+本工作分支增加的 LAN 安装能力仍是未发布候选，不能使用 v0.1.1 镜像启用。
 使用该版本发行说明中的已验证镜像引用，不能使用模板占位符启动。
 
 **历史兼容说明：v0.1.0 镜像不包含首次网页创建管理员。** 已有 v0.1.0 实例
 可以按第 6 节保留数据升级；CLI 管理员创建方式作为备用保留。
 
-## 1. 准备安装文件
+## 未发布候选：绿联 UGOS Pro 局域网 HTTP 快捷安装
+
+**全新实例**：`compose.lan.yml` 是可直接粘贴到 UGOS Pro Compose 项目的单文件配置，无需 `.env`、
+OpenSSL、SSH 或管理员 CLI。镜像仍为明确占位符：等待包含本候选的已审查固定版本
+或 Digest 后才能实际安装，不要把 v0.1.1 镜像当作支持 LAN 的版本。
+
+1. 发布者提供镜像后，替换 `image`；将两处 `192.168.1.100` 改成 NAS 的私有 IPv4。
+2. 主机端口冲突时，同时修改映射中的主机端口与 `BETTER_AUTH_URL` 的端口，保留
+   容器端口和 `PORT: 3000`。
+3. 启动项目，打开准确的 `http://NAS-IP:主机端口`，创建管理员，进入登录页面并登录。
+
+必须显式设置 `INSTALL_MODE: lan-http`。只接受准确的 RFC1918 IPv4 HTTP Origin：
+`10.0.0.0/8`、`172.16.0.0/12`、`192.168.0.0/16`；不接受域名、IPv6、localhost、
+公网 IP、路径或多个别名。配置错误拒绝启动，Host 和转发头不会扩大可信 Origin。
+保留 `NODE_ENV=production`，会话 Cookie 明确不设 Secure，仍有 HttpOnly、SameSite=Lax。
+LAN 不生成或要求验证码；标准模式保留 60 分钟验证码和每分钟 5 次错误限制。
+
+**HTTP 不提供传输加密，私有 IP 校验不能替代防火墙。** 密码和会话可能被同网段
+设备监听。只在可信局域网使用，用 NAS 防火墙限制来源，不要转发公网端口；公网或
+不可信网络使用标准 HTTPS。首次管理员创建前，能访问此地址的人都能抢先初始化，
+请启动后立即完成。真实 DXP2800 / UGOS Pro 图形界面、防火墙效果：**UNVERIFIED**。
+
+LAN 自动密钥保存于 `/data/uploads/.auth-secret`（0600），位于公开品牌目录之外。
+保持数据卷和 uploads 路径，重启、升级及完整 v1 物理恢复会复用原密钥。不要删除、
+编辑或共享密钥文件。旧实例迁入 LAN 时提供原 `BETTER_AUTH_SECRET`，首次候选启动
+会持久化它；已有用户或已初始化却缺少密钥、文件损坏、变量与文件不一致均拒绝启动。
+标准模式沿用 v0.1.1 的非空密钥接受行为，不会自动换钥；历史 31 字符等短密钥
+继续在标准 HTTPS 模式使用。LAN 要求原密钥至少 32 字符，且不能使用开发默认密钥；
+不符合时明确拒绝迁入。不要为绕过检查生成新密钥替换旧值，密钥政策调整不在本流程内。
+
+候选将初始化关闭状态写入现有数据库，网页和 CLI 共用；删除全部用户或重启都不
+重新开放。已有用户的旧实例在候选启动时补记关闭状态。真正回到未初始化状态时，
+按既有停机流程恢复创建管理员前的完整物理备份，或为新实例使用新的独立卷。
+旧版本在升级前已删空且没有标记时，无法判断过去是否初始化过，不声称覆盖该历史情形。
+
+备份恢复步骤仍见第 5 节及 [BACKUP_RESTORE.md](./BACKUP_RESTORE.md)，LAN 命令改用
+`-f compose.lan.yml`。完整 uploads 备份必须保留隐藏密钥文件；初始化后备份会保留
+关闭状态，即便没有用户。标准环境密钥仍需另行保存，JSON 或仅 SQLite 不能替代物理备份。
+
+### 全新卷与已有实例迁移的区别
+
+标准文件的项目名是 `navigation`，LAN 文件是 `navlume-lan`。默认情况下，同名
+`navigation-data` 会分别生成 **`navigation_navigation-data`** 和
+**`navlume-lan_navigation-data`**，它们不是同一个卷。`-p`、`COMPOSE_PROJECT_NAME`
+或 NAS 图形界面的项目名还可能改变前缀。直接启动未修改的 LAN 模板会建立新实例，
+不能当作旧实例迁移。全新安装保持上方单文件流程不变。
+
+### 已有标准实例迁入 LAN（候选）
+
+只用于原文件将 `/data` 挂载为 Docker Named Volume 的标准实例。**先完成停机备份
+和离卷备份，再修改 LAN 文件或启动新项目。禁止 `docker compose down -v`、
+`docker volume rm`、清空目录、删除/覆盖/重建原卷；不要同时启动新旧应用容器。**
+若实际使用 bind mount、自定义数据路径或已丢失原密钥，停止并先核实实际布局。
+
+在原标准项目目录操作，保留原 Compose 文件和 `.env`（含原认证密钥），不要分享它。
+原密钥不足 32 字符时保持标准 HTTPS，不执行下面的 LAN 切换。所有命令必须成功；
+任何一步失败都停止，不继续启动新项目。
+
+1. 在 `docker ps -a` 中找到原应用容器名，填写变量并读取它的实际项目名、卷名。
+   不凭文件名猜卷名。以下 Bash 命令使用示例文件名，源码部署应填写自己的原文件：
+
+```bash
+OLD_CONTAINER=你的原应用容器名
+OLD_COMPOSE=compose.install.yml
+OLD_PROJECT=$(docker inspect "$OLD_CONTAINER" --format '{{ index .Config.Labels "com.docker.compose.project" }}')
+OLD_VOLUME_TYPE=$(docker inspect "$OLD_CONTAINER" --format '{{range .Mounts}}{{if eq .Destination "/data"}}{{.Type}}{{end}}{{end}}')
+OLD_VOLUME=$(docker inspect "$OLD_CONTAINER" --format '{{range .Mounts}}{{if eq .Destination "/data"}}{{.Name}}{{end}}{{end}}')
+test -n "$OLD_PROJECT" && test "$OLD_VOLUME_TYPE" = volume && test -n "$OLD_VOLUME" || exit 1
+printf '原项目：%s\n原数据卷：%s\n' "$OLD_PROJECT" "$OLD_VOLUME"
+```
+
+2. 使用实际原项目名停止应用，按既有 v1 流程备份并复制到卷外；此时保持原容器和卷。
+   检查输出 `backup verified`，再把时间戳备份目录另存到安全位置：
+
+```bash
+docker compose -p "$OLD_PROJECT" -f "$OLD_COMPOSE" stop app
+docker compose -p "$OLD_PROJECT" -f "$OLD_COMPOSE" run --rm -T app \
+  node dist/server/server/backup.js --app-stopped --output /data/backups
+mkdir -p ./backups
+docker compose -p "$OLD_PROJECT" -f "$OLD_COMPOSE" cp app:/data/backups/. ./backups/
+```
+
+3. 取得含本候选的已审查镜像，在单文件 `compose.lan.yml` 中填写镜像、NAS IP 和端口。
+   在 app 的 `environment` 中加入以下一行，让原 `.env` 提供**同一个**密钥：
+
+```yaml
+      BETTER_AUTH_SECRET: "${BETTER_AUTH_SECRET:?Use the original instance secret}"
+```
+
+   将文件底部的卷定义改成下面的样式，`name` 必须填写第 1 步得到的真实 `OLD_VOLUME`，
+   不保留示例值。`external: true` 只使用已有卷，名字错误或卷不存在时拒绝启动，
+   不会悄悄建立空卷：
+
+```yaml
+volumes:
+  navigation-data:
+    external: true
+    name: navigation_navigation-data  # 替换成实际 OLD_VOLUME
+```
+
+4. 新项目显式使用独立项目名（例如原项目名加 `-lan`），但 `/data` 绑定到原卷。
+   在同一目录使用原 `.env`，先核对配置，再启动；不同时启动旧项目：
+
+```bash
+NEW_PROJECT="${OLD_PROJECT}-lan"
+docker compose -p "$NEW_PROJECT" --env-file .env -f compose.lan.yml config --quiet
+docker compose -p "$NEW_PROJECT" --env-file .env -f compose.lan.yml up -d --no-build
+NEW_CONTAINER=$(docker compose -p "$NEW_PROJECT" --env-file .env -f compose.lan.yml ps -q app)
+docker inspect "$NEW_CONTAINER" --format '{{range .Mounts}}{{if eq .Destination "/data"}}{{.Name}}{{end}}{{end}}'
+```
+
+核对输出仍为 `OLD_VOLUME`，容器健康后用原账号登录，检查原导航及 uploads，确认
+没有回到初始化页。首次 LAN 启动仅在原 uploads 中持久化同一密钥并保留/补记关闭标记，
+不移动数据库或复制成新卷。之后保持 external 卷定义、同一新项目名和 uploads 路径。
+标准与 LAN 的 Origin/Cookie 属性不同，切换模式后需重新登录；同一标准模式升级则
+保留原密钥和已签名会话。
+
+如新项目启动失败，停止新 app 后用原 Compose、原 `.env` 和 `OLD_PROJECT` 启动旧 app。
+原卷仍在，不通过删卷“修复”失败，也不在两项目间并发运行同一个 SQLite 实例。
+
+## 1. 标准安装：准备安装文件
 
 Linux 安装 Docker Engine 和 Compose 插件；NAS 安装厂商的容器应用。检查：
 
@@ -71,8 +191,8 @@ Compose 会拒绝空镜像、空密钥和空访问网址；填写错误的镜像
   显式绑定服务器的私有 LAN IP，并用防火墙仅允许代理访问该端口。
   代理容器中的 `127.0.0.1` 是代理容器自身，不是 NAS 主机。
 
-生产 Cookie 保持 `Secure`、`HttpOnly`、`SameSite=Lax`。不通过更改
-`NODE_ENV` 或降低 Cookie 属性来适配普通 HTTP IP 地址。不默认绑定
+标准生产 Cookie 保持 `Secure`、`HttpOnly`、`SameSite=Lax`。不通过更改
+`NODE_ENV` 适配 HTTP；只有上方显式 LAN 候选才使用非 Secure Cookie。不默认绑定
 `0.0.0.0`，不直接把未加密的应用端口转发到公网。
 
 ## 2. 拉取镜像并启动
@@ -138,7 +258,7 @@ v0.1.1 首次安装的推荐流程：**Docker Compose → 容器日志 → 一�
 
 创建成功后网页初始化立即关闭。已有任何用户的实例（包括只有普通用户的
 实例）不会重新开放此入口；CLI 已创建管理员时也会关闭。首次初始化不等于
-公开注册。非 localhost 访问仍须可信 HTTPS，与第 1 节 Origin 和 Secure Cookie
+公开注册。标准模式非 localhost 访问仍须可信 HTTPS，与第 1 节 Origin 和 Secure Cookie
 规则一致。
 
 ### CLI 备用方式（可选）

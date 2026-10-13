@@ -1,0 +1,23 @@
+# UGOS Pro: paste as one Compose project. Requires a publisher-delivered version
+# containing INSTALL-UX-01; this candidate does not publish an image.
+name: navlume-lan
+services:
+  app:
+    image: ghcr.io/laohiog/navlume:REPLACE_WITH_REVIEWED_VERSION
+    platform: linux/amd64
+    restart: unless-stopped
+    ports:
+      # Replace NAS IP here and below. Change BOTH 3000 host ports if needed.
+      - "192.168.1.100:3000:3000"
+    environment:
+      NODE_ENV: production
+      INSTALL_MODE: lan-http
+      BETTER_AUTH_URL: http://192.168.1.100:3000
+      HOST: 0.0.0.0
+      PORT: 3000
+      DATABASE_PATH: /data/nav.sqlite
+      UPLOADS_DIR: /data/uploads
+    volumes:
+      - navigation-data:/data
+volumes:
+  navigation-data:

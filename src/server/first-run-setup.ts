@@ -2,9 +2,9 @@ import { randomBytes, timingSafeEqual } from 'node:crypto';
 import type { Hono } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
 import type { Auth } from '../db/auth.js';
-import { user } from '../db/auth-schema.js';
 import type { DatabaseHandle } from '../db/index.js';
 import { createFirstAdministrator } from './bootstrap-admin.js';
+import { isInitializationClosed } from './setup-state.js';
 
 /** One capability per running instance; never persisted or exposed by HTTP. */
 export function createFirstRunSetup(
@@ -13,9 +13,10 @@ export function createFirstRunSetup(
   baseURL: string,
   log: (message: string) => void = console.log,
   now: () => number = Date.now,
+  lanHttp = false,
 ) {
-  const isEmpty = () => handle.db.select({ id: user.id }).from(user).limit(1).get() === undefined;
-  let code: string | null = isEmpty() ? randomBytes(16).toString('hex') : null;
+  let closed = isInitializationClosed(handle);
+  let code: string | null = !closed && !lanHttp ? randomBytes(16).toString('hex') : null;
   const expiresAt = now() + 60 * 60 * 1000;
   let busy = false;
   let failures = 0;
@@ -25,18 +26,32 @@ export function createFirstRunSetup(
   function needed(): boolean {
     // Observing provisioning closes this process's capability permanently, even
     // if the last account is later deleted. CLI provisioning is seen on each request.
-    if (!busy && !isEmpty()) code = null;
-    return code !== null;
+    if (!busy && isInitializationClosed(handle)) { closed = true; code = null; }
+    return !closed;
   }
 
   return {
     register(app: Hono): void {
+      if (lanHttp) {
+        const origin = new URL(baseURL).origin;
+        // Only the configured literal is trusted; forwarded headers add no aliases.
+        app.use('/api/*', async (c, next) => {
+          if (c.req.path === '/api/health') return next();
+          if (new URL(c.req.url).origin !== origin
+            || (!['GET', 'HEAD', 'OPTIONS'].includes(c.req.method) && c.req.header('origin') !== origin)
+            || (c.req.header('origin') !== undefined && c.req.header('origin') !== origin)) {
+            return c.json({ error: 'Invalid Origin' }, 403);
+          }
+          return next();
+        });
+      }
       app.use('/api/setup/*', async (c, next) => {
         c.header('Cache-Control', 'no-store');
         await next();
       });
       app.get('/api/setup/status', (c) => {
-        try { return c.json({ needsSetup: needed() }); }
+        // Standard response remains exactly compatible. LAN adds a mode hint.
+        try { return c.json({ needsSetup: needed(), ...(lanHttp ? { requiresCode: false } : {}) }); }
         catch { return c.json({ error: 'Internal Server Error' }, 500); }
       });
       app.post('/api/setup/admin', bodyLimit({ maxSize: 4096,
@@ -50,7 +65,7 @@ export function createFirstRunSetup(
             return c.json({ error: 'JSON Content-Type Required' }, 415);
           }
           if (!needed() || busy) return c.json({ error: 'Setup Unavailable' }, 409);
-          if (now() >= expiresAt) return c.json({ error: 'Setup Code Expired' }, 403);
+          if (!lanHttp && now() >= expiresAt) return c.json({ error: 'Setup Code Expired' }, 403);
           // Instance-wide, bounded state: forwarded client addresses cannot bypass
           // the limit, and arbitrary addresses cannot grow an in-memory map.
           if (now() >= windowEnds) { failures = 0; windowEnds = now() + 60_000; }
@@ -67,24 +82,28 @@ export function createFirstRunSetup(
             return c.json({ error: 'Invalid Input' }, 400);
           }
           const data = body as Record<string, unknown>;
-          if (Object.keys(data).length !== 4 ||
-              !['username', 'email', 'password', 'setupCode'].every((key) => typeof data[key] === 'string')) {
+          if (Object.keys(data).some((key) => !['username', 'email', 'password', 'setupCode'].includes(key)) ||
+              !['username', 'email', 'password'].every((key) => typeof data[key] === 'string') ||
+              (!lanHttp && typeof data.setupCode !== 'string') ||
+              (data.setupCode !== undefined && typeof data.setupCode !== 'string')) {
             return c.json({ error: 'Invalid Input' }, 400);
           }
           const { username, email, password, setupCode } = data as Record<string, string>;
           if (!/^[a-zA-Z0-9_.]{3,30}$/.test(username!) ||
               email!.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email!) ||
-              password!.length < 8 || password!.length > 128 || setupCode!.length > 128) {
+              password!.length < 8 || password!.length > 128 || (setupCode?.length ?? 0) > 128) {
             return c.json({ error: 'Invalid Input' }, 400);
           }
           if (!needed() || busy) return c.json({ error: 'Setup Unavailable' }, 409);
-          if (now() >= expiresAt) return c.json({ error: 'Setup Code Expired' }, 403);
+          if (!lanHttp && now() >= expiresAt) return c.json({ error: 'Setup Code Expired' }, 403);
           if (failures >= 5) return c.json({ error: 'Too Many Attempts' }, 429);
-          const submitted = Buffer.from(setupCode!);
-          const expected = Buffer.from(code!);
-          if (submitted.length !== expected.length || !timingSafeEqual(submitted, expected)) {
-            failures += 1;
-            return c.json({ error: 'Invalid Setup Code' }, 403);
+          if (!lanHttp) {
+            const submitted = Buffer.from(setupCode!);
+            const expected = Buffer.from(code!);
+            if (submitted.length !== expected.length || !timingSafeEqual(submitted, expected)) {
+              failures += 1;
+              return c.json({ error: 'Invalid Setup Code' }, 403);
+            }
           }
           // Parsing yielded: recheck before acquiring the exclusive creation path.
           if (!needed() || busy) return c.json({ error: 'Setup Unavailable' }, 409);
@@ -97,7 +116,8 @@ export function createFirstRunSetup(
               needed();
               return c.json({ error: 'Setup Unavailable' }, 409);
             }
-            if (result.status === 'failed') return c.json({ error: 'Administrator Creation Failed' }, 400);
+            if (result.status === 'failed') { failures += 1; return c.json({ error: 'Administrator Creation Failed' }, 400); }
+            closed = true;
             code = null;
             return c.json({ status: 'created' }, 201);
           } finally { busy = false; }

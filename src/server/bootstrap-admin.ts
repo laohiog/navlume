@@ -20,12 +20,12 @@
 
 import { pathToFileURL } from 'node:url';
 
-import { count, eq } from 'drizzle-orm';
-
 import { createAuth, type Auth } from '../db/auth.js';
 import { createDatabase, type DatabaseHandle } from '../db/index.js';
 import { runMigrations } from '../db/migrate.js';
 import { user } from '../db/auth-schema.js';
+import { resolveAuthSecret } from './auth-secret.js';
+import { isInitializationClosed, markInitializationComplete } from './setup-state.js';
 import {
   RuntimeConfigError,
   resolveRuntimeConfig,
@@ -93,18 +93,10 @@ export function readBootstrapInput(
   };
 }
 
-/** Number of users holding the admin role. */
-function countAdmins(handle: DatabaseHandle): number {
-  const rows = handle.db.select({ total: count() }).from(user).where(eq(user.role, 'admin')).all();
-
-  return rows[0]?.total ?? 0;
-}
-
 /**
  * Create the first administrator.
  *
- * Refuses when an administrator already exists, so the command cannot quietly add
- * a second bootstrap admin on a redeployed or already-provisioned instance.
+ * Refuses after provisioning, independently of subsequent user deletion.
  */
 export async function bootstrapAdmin(
   handle: DatabaseHandle,
@@ -138,8 +130,10 @@ export async function createFirstAdministrator(
     handle.sqlite.exec('BEGIN IMMEDIATE');
     began = true;
     const hasUsers = handle.db.select({ id: user.id }).from(user).limit(1).get() !== undefined;
-    if ((requireEmpty && hasUsers) || countAdmins(handle) > 0) {
-      handle.sqlite.exec('ROLLBACK');
+    const closed = isInitializationClosed(handle);
+    if (closed || (requireEmpty && hasUsers)) {
+      // Commit adoption of an older instance's existing users before refusing.
+      handle.sqlite.exec('COMMIT');
       began = false;
       return {
         status: 'refused',
@@ -155,6 +149,7 @@ export async function createFirstAdministrator(
         data: { username: input.username, emailVerified: true },
       },
     });
+    markInitializationComplete(handle);
     handle.sqlite.exec('COMMIT');
     began = false;
     return { status: 'created', userId: created.user.id, username: input.username };
@@ -198,7 +193,8 @@ export async function runBootstrapAdmin(
   try {
     runMigrations(handle);
 
-    const result = await bootstrapAdmin(handle, parsed.input, config.authSecret, config.authBaseUrl);
+    const secret = resolveAuthSecret(config, isInitializationClosed(handle));
+    const result = await bootstrapAdmin(handle, parsed.input, secret, config.authBaseUrl);
 
     if (result.status === 'refused') {
       console.error(`[bootstrap] ${result.message}`);

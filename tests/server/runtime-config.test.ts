@@ -41,6 +41,15 @@ describe('development configuration', () => {
 });
 
 describe('production configuration', () => {
+  it('preserves v0.1.1 acceptance of every non-empty configured standard secret', () => {
+    for (const secret of ['x', 's'.repeat(31), DEVELOPMENT_AUTH_SECRET]) {
+      const implicit = resolveRuntimeConfig(productionEnv({ BETTER_AUTH_SECRET: secret }));
+      const explicit = resolveRuntimeConfig(productionEnv({ BETTER_AUTH_SECRET: secret, INSTALL_MODE: 'standard' }));
+      expect(implicit.authSecret).toBe(secret);
+      expect(explicit.authSecret).toBe(secret);
+      expect(explicit.usingDevelopmentAuthSecret).toBe(false);
+    }
+  });
   it('accepts a complete production environment', () => {
     const config = resolveRuntimeConfig(productionEnv());
 

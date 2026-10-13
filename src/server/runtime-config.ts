@@ -19,6 +19,7 @@ export const DEFAULT_HOST = '0.0.0.0';
 export interface RuntimeConfig {
   nodeEnv: string;
   isProduction: boolean;
+  lanHttp: boolean;
   host: string;
   port: number;
   databasePath: string;
@@ -112,15 +113,28 @@ export function parseAuthBaseUrl(value: string | undefined, isProduction: boolea
  */
 export function resolveRuntimeConfig(env: NodeJS.ProcessEnv = process.env): RuntimeConfig {
   const isProduction = env.NODE_ENV === 'production';
+  if (env.INSTALL_MODE !== undefined && !['standard', 'lan-http'].includes(env.INSTALL_MODE)) {
+    throw new RuntimeConfigError('INSTALL_MODE must be standard or lan-http');
+  }
+  const lanHttp = env.INSTALL_MODE === 'lan-http';
 
   const port = parsePort(env.PORT);
   const host = requiredValue(env.HOST) ?? DEFAULT_HOST;
   const authBaseUrl = parseAuthBaseUrl(env.BETTER_AUTH_URL, isProduction);
+  if (lanHttp) validateLanOrigin(authBaseUrl);
+  if (lanHttp && requiredValue(env.BETTER_AUTH_TRUSTED_ORIGINS) !== undefined) {
+    throw new RuntimeConfigError('Additional trusted origins are not supported; configure BETTER_AUTH_URL only');
+  }
 
   const configuredSecret = requiredValue(env.BETTER_AUTH_SECRET);
 
-  if (configuredSecret === undefined && isProduction) {
+  if (configuredSecret === undefined && isProduction && !lanHttp) {
     throw new RuntimeConfigError('BETTER_AUTH_SECRET must be set in production');
+  }
+  // Standard mode retains v0.1.1's non-empty-secret acceptance. Only the explicit
+  // LAN mode enforces its stronger key boundary; never rotate a legacy key here.
+  if (lanHttp && configuredSecret !== undefined && (configuredSecret.length < 32 || configuredSecret === DEVELOPMENT_AUTH_SECRET)) {
+    throw new RuntimeConfigError('lan-http requires BETTER_AUTH_SECRET to contain at least 32 characters and not be the development fallback. For a legacy shorter key, keep standard HTTPS mode with the original key; do not replace it to bypass this check');
   }
 
   const databasePath = requiredValue(env.DATABASE_PATH) ?? 'data/nav.sqlite';
@@ -129,14 +143,27 @@ export function resolveRuntimeConfig(env: NodeJS.ProcessEnv = process.env): Runt
   return {
     nodeEnv: env.NODE_ENV ?? 'development',
     isProduction,
+    lanHttp,
     host,
     port,
     databasePath,
     uploadsDir,
-    authSecret: configuredSecret ?? DEVELOPMENT_AUTH_SECRET,
+    authSecret: configuredSecret ?? (lanHttp ? '' : DEVELOPMENT_AUTH_SECRET),
     authBaseUrl,
-    usingDevelopmentAuthSecret: configuredSecret === undefined,
+    usingDevelopmentAuthSecret: configuredSecret === undefined && !lanHttp,
   };
+}
+
+/** Deliberately accepts canonical RFC1918 IPv4 literals only, never DNS/Host discovery. */
+export function validateLanOrigin(raw: string): void {
+  const url = new URL(raw);
+  const parts = url.hostname.split('.').map(Number);
+  const privateIp = parts.length === 4 && parts.every((part) => Number.isInteger(part) && part >= 0 && part <= 255)
+    && (parts[0] === 10 || (parts[0] === 172 && parts[1]! >= 16 && parts[1]! <= 31)
+      || (parts[0] === 192 && parts[1] === 168));
+  if (url.protocol !== 'http:' || !privateIp || raw !== url.origin) {
+    throw new RuntimeConfigError('lan-http requires BETTER_AUTH_URL to be an exact http:// private RFC1918 IPv4 origin (no path, credentials, query, or fragment)');
+  }
 }
 
 /** Operator-facing warning text for the development fallback secret. */

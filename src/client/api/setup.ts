@@ -5,12 +5,15 @@ export interface SetupInput {
   setupCode: string;
 }
 
-export async function fetchSetupStatus(signal?: AbortSignal): Promise<boolean> {
+export async function fetchSetupStatus(signal?: AbortSignal, onRequiresCode?: (required: boolean) => void): Promise<boolean> {
   const response = await fetch('/api/setup/status', { cache: 'no-store', ...(signal ? { signal } : {}) });
   if (!response.ok) throw new Error('无法确认初始化状态，请重试');
   const body: unknown = await response.json();
   if (body === null || typeof body !== 'object' || !('needsSetup' in body) ||
       typeof body.needsSetup !== 'boolean') throw new Error('无法确认初始化状态，请重试');
+  if ('requiresCode' in body && typeof body.requiresCode !== 'boolean') throw new Error('无法确认初始化状态，请重试');
+  // Absence preserves the published standard-mode response and older servers.
+  onRequiresCode?.(!('requiresCode' in body) || body.requiresCode !== false);
   return body.needsSetup;
 }
 

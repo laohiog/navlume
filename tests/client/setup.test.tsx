@@ -5,6 +5,19 @@ import { fetchSetupStatus, submitSetup } from '../../src/client/api/setup.js';
 
 afterEach(() => vi.unstubAllGlobals());
 describe('setup UI and API', () => {
+  it('hides the code field only when LAN mode is explicitly reported', async () => {
+    const html = renderToStaticMarkup(<SetupForm onLogin={() => {}} requiresCode={false} />);
+    expect(html).toContain('局域网快捷安装');
+    expect(html).not.toContain('name="setupCode"');
+    expect(html).toContain('不加密传输');
+    const onMode = vi.fn();
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(Response.json({ needsSetup: true }))
+      .mockResolvedValueOnce(Response.json({ needsSetup: true, requiresCode: false })));
+    expect(await fetchSetupStatus(undefined, onMode)).toBe(true);
+    expect(onMode).toHaveBeenLastCalledWith(true);
+    expect(await fetchSetupStatus(undefined, onMode)).toBe(true);
+    expect(onMode).toHaveBeenLastCalledWith(false);
+  });
   it('renders five labeled fields with limits, code guidance, no persistent secrets', () => {
     const html = renderToStaticMarkup(<SetupForm onLogin={() => {}} />);
     expect(html).toContain('欢迎使用 Navlume');

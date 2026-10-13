@@ -16,7 +16,7 @@ A physical backup contains exactly two things:
 | Item | Meaning |
 |------|---------|
 | `nav.sqlite` | The whole SQLite database, captured as one self-contained file. |
-| `uploads/` | The complete uploads directory, including every uploaded brand asset. |
+| `uploads/` | The complete uploads directory, including brand assets and the LAN candidate's private `.auth-secret`. |
 
 Because the database is captured in full rather than filtered, the backup naturally
 includes:
@@ -33,7 +33,7 @@ tables.
 ### What is NOT backed up
 
 - `.env` or any environment file
-- `BETTER_AUTH_SECRET` or any other secret
+- Environment-provided `BETTER_AUTH_SECRET` in standard mode (save it separately).
 - application source code, `node_modules/`, or `dist/`
 - logs
 - previously created backup directories
@@ -43,6 +43,16 @@ Sidecars are excluded on purpose: the database is captured through SQLite's own
 backup mechanism, so the result is a single self-contained file that does not
 depend on any WAL or SHM file. Do not copy `nav.sqlite` by hand and expect the same
 guarantee.
+
+The unreleased LAN candidate stores a private key at `UPLOADS_DIR/.auth-secret`
+(0600), outside public `branding/` assets, and records initialization closure in
+the existing SQLite verification table. The unchanged v1 physical backup includes
+both naturally. Keep hidden files and permissions, and protect backups as credentials.
+Restart or deleting every user does not reopen setup; a post-init backup remains
+closed even without users. Restoring a genuinely pre-init full backup or creating
+a new independent volume still permits first installation. Older backups without
+a marker cannot prove historical provisioning if already empty; existing users
+are adopted on candidate startup. No backup format or restore algorithm changes.
 
 ---
 

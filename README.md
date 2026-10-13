@@ -17,12 +17,11 @@ inside each instance; existing brand settings and demo defaults are retained.
 ## Release availability
 
 Source repository: [laohiog/navlume](https://github.com/laohiog/navlume).
-This installation guide targets **v0.1.1**, including first-run web administrator
-setup, with a Linux AMD64 image at `ghcr.io/laohiog/navlume`. Install it only when
-the [v0.1.1 release page](https://github.com/laohiog/navlume/releases/tag/v0.1.1)
-provides the installation files and a verified image SHA tag or Registry Digest.
-If those artifacts are unavailable, wait for publication. This source documentation
-does not announce that v0.1.1 has been published.
+Published **v0.1.1**, source `699a16013eaa12b2a48708abd367dc5b6a73c361`, includes
+standard first-run web setup. Use its installation files and fixed image reference
+from the [v0.1.1 release page](https://github.com/laohiog/navlume/releases/tag/v0.1.1).
+This worktree contains an **unreleased LAN integration candidate**; the published
+v0.1.1 image does not support `INSTALL_MODE=lan-http`.
 The Git tag identifies the source commit; the release notes bind that commit to
 the published image and installation verification.
 
@@ -44,6 +43,13 @@ The prebuilt installation target is Linux AMD64/x86-64 with Docker and Compose.
 ARM64 and real NAS hardware are unverified.
 
 ## Docker installation
+
+The unreleased [LAN Compose](./compose.lan.yml) supports explicit private IPv4 HTTP,
+browser setup without a log code, and an automatically persisted authentication
+key. Its image reference is a placeholder pending a separately reviewed release.
+HTTP provides no transport encryption; use a trusted LAN and firewall restrictions.
+See the candidate section in [INSTALL.md](./docs/INSTALL.md). Standard HTTPS
+installation remains the default and retains its code and Secure cookies.
 
 For installation without Node.js or a source build, see the
 [Linux/NAS installation guide](./docs/INSTALL.md). It uses `compose.install.yml`
@@ -105,9 +111,9 @@ unset BOOTSTRAP_ADMIN_PASSWORD
 ```
 
 Open `http://localhost:3000`, sign in and create ordinary users in the admin UI.
-For NAS, LAN or any non-localhost installation, use an existing HTTPS proxy and
+For standard NAS, LAN or any non-localhost installation, use an existing HTTPS proxy and
 set `BETTER_AUTH_URL` to the exact browser-visible HTTPS origin. Authentication
-cookies stay `Secure` in production. See [Deployment](./docs/DEPLOYMENT.md).
+cookies stay `Secure` in standard production. See [Deployment](./docs/DEPLOYMENT.md).
 
 ## Data and backup
 
@@ -116,7 +122,8 @@ Keep the same Compose project and volume when upgrading. `docker compose down`
 preserves the volume; `docker compose down -v` deletes it.
 
 Stop the application before a physical backup or restore. Store an off-volume
-backup and keep the authentication secret separately. Restore replaces the
+backup and keep the standard-mode environment secret separately. In the LAN
+candidate, the private key is included in the full uploads backup. Restore replaces the
 database and uploads. See [Backup & Restore](./docs/BACKUP_RESTORE.md) and the
 installation guide for commands. JSON exports cover navigation content and do
 not replace a full-instance backup.

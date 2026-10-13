@@ -21,6 +21,8 @@ import { createDatabase } from '../db/index.js';
 import { runMigrations } from '../db/migrate.js';
 import { createApp } from './app.js';
 import { createFirstRunSetup } from './first-run-setup.js';
+import { resolveAuthSecret } from './auth-secret.js';
+import { isInitializationClosed } from './setup-state.js';
 import {
   DEVELOPMENT_SECRET_WARNING,
   RuntimeConfigError,
@@ -82,16 +84,22 @@ function main(): void {
   console.log(`[db] applying migrations to ${config.databasePath}`);
 
   const database = openMigratedDatabase(config);
+  let secret: string;
+  try {
+    secret = resolveAuthSecret(config, isInitializationClosed(database));
+  } catch (error) {
+    database.close();
+    console.error('[config]', error instanceof RuntimeConfigError ? error.message : 'Cannot persist auth secret');
+    process.exitCode = 1;
+    return;
+  }
 
   const auth = createAuth({
     db: database.db,
-    secret: config.authSecret,
+    secret,
     baseURL: config.authBaseUrl,
-    // Production always issues Secure cookies regardless of the configured origin,
-    // so a TLS-terminating proxy in front of plain HTTP inside the container
-    // cannot silently downgrade cookie security. Development leaves the option
-    // unset, preserving Better Auth's existing origin-derived behaviour.
-    ...(config.isProduction ? { useSecureCookies: true } : {}),
+    // Standard production stays Secure; only explicit validated LAN HTTP opts out.
+    ...(config.lanHttp ? { useSecureCookies: false } : config.isProduction ? { useSecureCookies: true } : {}),
   });
 
   // Static serving is enabled for the production runtime. In development the Vite
@@ -100,7 +108,7 @@ function main(): void {
   const app = createApp({
     db: database.db,
     auth,
-    setup: createFirstRunSetup(database, auth, config.authBaseUrl),
+    setup: createFirstRunSetup(database, auth, config.authBaseUrl, console.log, Date.now, config.lanHttp),
     ...(config.isProduction ? { staticRoot: STATIC_ROOT } : {}),
   });
 

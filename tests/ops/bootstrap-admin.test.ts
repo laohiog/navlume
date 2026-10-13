@@ -194,11 +194,10 @@ describe('bootstrap safety', () => {
     expect(admins(temp.handle)).toHaveLength(1);
   });
 
-  it('fails cleanly on a duplicate username', async () => {
+  it('refuses a completed instance even if the administrator role was removed', async () => {
     await bootstrapAdmin(temp.handle, VALID_INPUT, TEST_AUTH_SECRET, TEST_AUTH_BASE_URL);
 
-    // Remove the admin role so the guard does not short-circuit, leaving the
-    // duplicate-identity conflict to surface.
+    // Removing the role must not reopen first-run provisioning.
     temp.handle.sqlite.prepare("update user set role = 'user' where username = ?").run(VALID_INPUT.username);
 
     const duplicate = await bootstrapAdmin(
@@ -208,10 +207,10 @@ describe('bootstrap safety', () => {
       TEST_AUTH_BASE_URL,
     );
 
-    expect(duplicate.status).toBe('failed');
-    if (duplicate.status !== 'failed') return;
+    expect(duplicate.status).toBe('refused');
+    if (duplicate.status !== 'refused') return;
 
-    expect(duplicate.message).toMatch(/failed to create administrator/);
+    expect(duplicate.message).toMatch(/already provisioned/);
     expect(admins(temp.handle)).toHaveLength(0);
   });
 
