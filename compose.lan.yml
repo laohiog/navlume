@@ -1,9 +1,11 @@
-# UGOS Pro: paste as one Compose project. Requires a publisher-delivered version
-# containing INSTALL-UX-01; this candidate does not publish an image.
+# Navlume v0.1.2: paste as a NEW Compose project for a fresh LAN installation.
+# Image source: 3a9ad4c716b0f961dd089969c387603e4e631576 (release docs are separate).
+# HTTP is unencrypted. Use a trusted LAN and promptly claim the administrator.
+# Existing installations: back up first and follow docs/INSTALL.md volume rules.
 name: navlume-lan
 services:
   app:
-    image: ghcr.io/laohiog/navlume:REPLACE_WITH_REVIEWED_VERSION
+    image: ghcr.io/laohiog/navlume@sha256:f1178e3a8954c00e56e5c178006224d3421ee93b739a2d71025a1a71bb80be4d
     platform: linux/amd64
     restart: unless-stopped
     ports:

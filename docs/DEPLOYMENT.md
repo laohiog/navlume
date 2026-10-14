@@ -1,4 +1,4 @@
-# Navlume v0.1.1 Deployment
+# Navlume v0.1.2 Deployment
 
 Self-hosted deployment of Navlume as a **single
 application container**.
@@ -8,14 +8,14 @@ Linux/NAS installation using `compose.install.yml`, see [INSTALL.md](./INSTALL.m
 
 Public source: [laohiog/navlume](https://github.com/laohiog/navlume).
 The Linux AMD64 image is `ghcr.io/laohiog/navlume`. See the
-[v0.1.1 release page](https://github.com/laohiog/navlume/releases/tag/v0.1.1) for
-the verified source commit, image SHA tag and Registry Digest. Use the v0.1.1
-installation files and image from that published release. This working branch
-contains an unreleased LAN integration candidate; its placeholder image is not
-available and the v0.1.1 image cannot enable LAN mode. Source builds use the
-reviewed source checkpoint.
+[v0.1.2 release page](https://github.com/laohiog/navlume/releases/tag/v0.1.2) for
+the release tag, image source commit, SHA tag and Registry Digest. The verified
+image source remains `3a9ad4c716b0f961dd089969c387603e4e631576`; the release tag
+adds documentation and fixed installation references without runtime changes.
+Use `ghcr.io/laohiog/navlume@sha256:f1178e3a8954c00e56e5c178006224d3421ee93b739a2d71025a1a71bb80be4d`
+for prebuilt installations. Source builds identify their own actual revision.
 
-The candidate's standalone `compose.lan.yml` explicitly sets `INSTALL_MODE=lan-http`,
+The standalone `compose.lan.yml` explicitly sets `INSTALL_MODE=lan-http`,
 accepts one exact RFC1918 IPv4 HTTP origin and supports browser creation without a
 log code. Its automatically persisted key is included in full uploads backups.
 HTTP has no transport encryption; private-IP validation does not replace a firewall.
@@ -56,8 +56,8 @@ database **not** to sit inside the uploads directory.
 
 - Docker Engine with Compose v2 (`docker version`, `docker compose version`)
 - Roughly 1 GB of free disk for the image and dependencies
-- A reverse proxy / TLS terminator **only if** the instance is Internet-facing
-  (see §9)
+- An existing reverse proxy / TLS terminator for standard non-localhost access
+  (see §9); explicit LAN HTTP uses the separate single-file Compose
 
 The application does not terminate TLS itself.
 
@@ -118,7 +118,7 @@ On the first start the container:
 
 1. validates the production configuration;
 2. applies pending Drizzle migrations to `/data/nav.sqlite`;
-3. prints a random, one-time setup code if there are no users;
+3. prints a random, one-time setup code in standard mode if initialization is open and there are no users;
 4. starts the HTTP server.
 
 Migration runs **before** the server begins listening, so a migration failure
@@ -156,19 +156,21 @@ not depend on `BETTER_AUTH_URL` being reachable from inside the container.
 ## 6. Create the first administrator
 
 A fresh installation has **no administrator**, and public sign-up is disabled.
-For Navlume v0.1.1, read `[setup] First-run initialization code` in
+For standard-mode Navlume v0.1.2, read `[setup] First-run initialization code` in
 `docker compose logs app`, open `BETTER_AUTH_URL`, and create the first administrator
 on the welcome page. Then choose **进入登录页面** to sign in normally. The code is
-valid for 60 minutes; a restart generates a new code on an empty instance and
-invalidates the old one. Creation closes web setup; any existing user prevents it.
+valid for 60 minutes; a restart generates a new code on an uninitialized empty instance and
+invalidates the old one. Creation persistently closes web setup; any existing user prevents it.
+Deleting all users does not reopen setup. Explicit LAN HTTP uses the same web
+flow without a code; see the LAN installation section.
 Protect container-log access and never share the code. No default password exists.
 
 **Historical compatibility:** v0.1.0 images do not contain web setup. See the
-[v0.1.1 installation guide](INSTALL.md) for Docker Compose → container logs →
+[v0.1.2 installation guide](INSTALL.md) for standard Docker Compose → container logs →
 one-time code → web administrator setup → login, and the release availability
 requirements above.
 
-The CLI remains an optional fallback in v0.1.1 (required for first administrator
+The CLI remains an optional fallback in v0.1.2 (required for first administrator
 creation on v0.1.0). Use one-shot variables:
 
 ```bash
@@ -282,7 +284,7 @@ are always `Secure` in standard production** (see §3), which means a browser wi
 them from an HTTPS origin. `http://localhost` is the one exception, because browsers
 treat it as a secure context.
 
-So for anything other than a localhost trial, place the single container behind an
+For standard mode other than a localhost trial, place the single container behind an
 **existing** reverse proxy or TLS terminator of your choice and:
 
 - forward `https://nav.example.com` → the container's published port;

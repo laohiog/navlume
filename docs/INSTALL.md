@@ -1,27 +1,34 @@
-# Navlume v0.1.1 Docker 安装（Linux / NAS）
+# Navlume v0.1.2 Docker 安装（Linux / NAS）
 
 安装者只需要 Docker、Compose 和安装文件，不需要源码、Node.js 或 npm。
 仅支持 **Linux AMD64 / x86-64**。ARM64 尚未构建和运行验证，标记为
 **UNVERIFIED**，请勿在 ARM NAS 上把模拟运行当作正式支持。
 
-本文用于安装 Navlume **v0.1.1**，包含首次网页创建管理员功能。
+本文用于安装 Navlume **v0.1.2**，提供标准 HTTPS 与显式局域网 HTTP 两种安装方式。
 公开源码：[laohiog/navlume](https://github.com/laohiog/navlume)。
 镜像为 `ghcr.io/laohiog/navlume`；准确的源码 Commit、SHA Tag 和 Registry Digest
-以 [v0.1.1 发行说明](https://github.com/laohiog/navlume/releases/tag/v0.1.1) 为准。
-v0.1.1 已发布，源码 Commit 为 `699a16013eaa12b2a48708abd367dc5b6a73c361`。
-本工作分支增加的 LAN 安装能力仍是未发布候选，不能使用 v0.1.1 镜像启用。
-使用该版本发行说明中的已验证镜像引用，不能使用模板占位符启动。
+以 [v0.1.2 发行说明](https://github.com/laohiog/navlume/releases/tag/v0.1.2) 为准。
+已验证镜像的实际来源为 `3a9ad4c716b0f961dd089969c387603e4e631576`；v0.1.2 Tag
+还包含发行文档和安装引用修正，不改变运行代码，也不把旧镜像标记为来自新的文档提交。
+完整身份见发行附件 `RELEASE-IDENTITY.json`。固定镜像引用为：
+
+```text
+ghcr.io/laohiog/navlume@sha256:f1178e3a8954c00e56e5c178006224d3421ee93b739a2d71025a1a71bb80be4d
+```
+
+v0.1.1 支持标准网页初始化，但不支持 `INSTALL_MODE=lan-http`；不要用旧镜像启用 LAN。
 
 **历史兼容说明：v0.1.0 镜像不包含首次网页创建管理员。** 已有 v0.1.0 实例
 可以按第 6 节保留数据升级；CLI 管理员创建方式作为备用保留。
 
-## 未发布候选：绿联 UGOS Pro 局域网 HTTP 快捷安装
+## 局域网 HTTP 快捷安装（绿联 UGOS Pro 等 Compose 环境）
 
 **全新实例**：`compose.lan.yml` 是可直接粘贴到 UGOS Pro Compose 项目的单文件配置，无需 `.env`、
-OpenSSL、SSH 或管理员 CLI。镜像仍为明确占位符：等待包含本候选的已审查固定版本
-或 Digest 后才能实际安装，不要把 v0.1.1 镜像当作支持 LAN 的版本。
+OpenSSL、SSH 或管理员 CLI。下载 [compose.lan.yml](https://github.com/laohiog/navlume/releases/download/v0.1.2/compose.lan.yml)，
+镜像已固定为上面的已验证 Digest。建立全新项目和新卷，不复用或覆盖已有安装；
+已有实例按下方迁移说明先备份、核实原卷与原密钥。
 
-1. 发布者提供镜像后，替换 `image`；将两处 `192.168.1.100` 改成 NAS 的私有 IPv4。
+1. 将单文件配置粘贴或导入新 Compose 项目；将两处 `192.168.1.100` 改成 NAS 的实际私有 IPv4。
 2. 主机端口冲突时，同时修改映射中的主机端口与 `BETTER_AUTH_URL` 的端口，保留
    容器端口和 `PORT: 3000`。
 3. 启动项目，打开准确的 `http://NAS-IP:主机端口`，创建管理员，进入登录页面并登录。
@@ -39,14 +46,14 @@ LAN 不生成或要求验证码；标准模式保留 60 分钟验证码和每分
 
 LAN 自动密钥保存于 `/data/uploads/.auth-secret`（0600），位于公开品牌目录之外。
 保持数据卷和 uploads 路径，重启、升级及完整 v1 物理恢复会复用原密钥。不要删除、
-编辑或共享密钥文件。旧实例迁入 LAN 时提供原 `BETTER_AUTH_SECRET`，首次候选启动
+编辑或共享密钥文件。旧实例迁入 LAN 时提供原 `BETTER_AUTH_SECRET`，首次 v0.1.2 启动
 会持久化它；已有用户或已初始化却缺少密钥、文件损坏、变量与文件不一致均拒绝启动。
 标准模式沿用 v0.1.1 的非空密钥接受行为，不会自动换钥；历史 31 字符等短密钥
 继续在标准 HTTPS 模式使用。LAN 要求原密钥至少 32 字符，且不能使用开发默认密钥；
 不符合时明确拒绝迁入。不要为绕过检查生成新密钥替换旧值，密钥政策调整不在本流程内。
 
-候选将初始化关闭状态写入现有数据库，网页和 CLI 共用；删除全部用户或重启都不
-重新开放。已有用户的旧实例在候选启动时补记关闭状态。真正回到未初始化状态时，
+v0.1.2 将初始化关闭状态写入现有数据库，网页和 CLI 共用；删除全部用户或重启都不
+重新开放。已有用户的旧实例在 v0.1.2 启动时补记关闭状态。真正回到未初始化状态时，
 按既有停机流程恢复创建管理员前的完整物理备份，或为新实例使用新的独立卷。
 旧版本在升级前已删空且没有标记时，无法判断过去是否初始化过，不声称覆盖该历史情形。
 
@@ -62,7 +69,7 @@ LAN 自动密钥保存于 `/data/uploads/.auth-secret`（0600），位于公开�
 或 NAS 图形界面的项目名还可能改变前缀。直接启动未修改的 LAN 模板会建立新实例，
 不能当作旧实例迁移。全新安装保持上方单文件流程不变。
 
-### 已有标准实例迁入 LAN（候选）
+### 已有标准实例迁入 LAN
 
 只用于原文件将 `/data` 挂载为 Docker Named Volume 的标准实例。**先完成停机备份
 和离卷备份，再修改 LAN 文件或启动新项目。禁止 `docker compose down -v`、
@@ -97,7 +104,7 @@ mkdir -p ./backups
 docker compose -p "$OLD_PROJECT" -f "$OLD_COMPOSE" cp app:/data/backups/. ./backups/
 ```
 
-3. 取得含本候选的已审查镜像，在单文件 `compose.lan.yml` 中填写镜像、NAS IP 和端口。
+3. 使用 v0.1.2 的单文件 `compose.lan.yml`（已固定镜像），填写 NAS IP 和端口。
    在 app 的 `environment` 中加入以下一行，让原 `.env` 提供**同一个**密钥：
 
 ```yaml
@@ -144,15 +151,16 @@ docker info
 docker compose version
 ```
 
-从 v0.1.1 发行页面下载同一版本的三份附件：
+从 v0.1.2 发行页面下载同一版本的标准安装附件：
 
-- [compose.install.yml](https://github.com/laohiog/navlume/releases/download/v0.1.1/compose.install.yml)
-- [default.env.install.example](https://github.com/laohiog/navlume/releases/download/v0.1.1/default.env.install.example)
-- [INSTALL.md](https://github.com/laohiog/navlume/releases/download/v0.1.1/INSTALL.md)（本说明）
+- [compose.install.yml](https://github.com/laohiog/navlume/releases/download/v0.1.2/compose.install.yml)
+- [default.env.install.example](https://github.com/laohiog/navlume/releases/download/v0.1.2/default.env.install.example)
+- [INSTALL.md](https://github.com/laohiog/navlume/releases/download/v0.1.2/INSTALL.md)（本说明）
+- [BACKUP_RESTORE.md](https://github.com/laohiog/navlume/releases/download/v0.1.2/BACKUP_RESTORE.md)（备份与恢复）
 
 放在独立目录 `navigation`。发行附件中的 `default.env.install.example` 需先
 改名为 `.env.install.example`。无需克隆仓库；也可在发布后下载
-[v0.1.1 源码压缩包](https://github.com/laohiog/navlume/archive/refs/tags/v0.1.1.zip)，
+[v0.1.2 源码压缩包](https://github.com/laohiog/navlume/archive/refs/tags/v0.1.2.zip)，
 取出 `compose.install.yml`、`.env.install.example` 和 `docs/INSTALL.md`。
 源码压缩包保留原始环境模板文件名，不需要改名。
 
@@ -169,7 +177,7 @@ openssl rand -base64 32
 
 | 配置 | 填什么 |
 | --- | --- |
-| `NAV_IMAGE` | v0.1.1 发行说明中的已验证 `ghcr.io/laohiog/navlume:sha-<该版本完整源码Commit>`；更推荐其 `ghcr.io/laohiog/navlume@sha256:<Registry Digest>`，不要复用 v0.1.0 的镜像引用 |
+| `NAV_IMAGE` | 本版环境模板已填上方固定 Registry Digest，保留即可；如使用 SHA Tag，只使用 v0.1.2 发行说明中的实际镜像来源 SHA，不用文档提交 SHA 或旧版本镜像 |
 | `BETTER_AUTH_SECRET` | 上一步生成的随机密钥；妥善保存，升级时保留 |
 | `BETTER_AUTH_URL` | 浏览器实际访问的准确 Origin（协议、主机、端口），不加页面路径 |
 | `NAV_BIND_IP` | 默认 `127.0.0.1`；只允许本机访问应用端口 |
@@ -192,7 +200,7 @@ Compose 会拒绝空镜像、空密钥和空访问网址；填写错误的镜像
   代理容器中的 `127.0.0.1` 是代理容器自身，不是 NAS 主机。
 
 标准生产 Cookie 保持 `Secure`、`HttpOnly`、`SameSite=Lax`。不通过更改
-`NODE_ENV` 适配 HTTP；只有上方显式 LAN 候选才使用非 Secure Cookie。不默认绑定
+`NODE_ENV` 适配 HTTP；只有上方显式 LAN 模式才使用非 Secure Cookie。不默认绑定
 `0.0.0.0`，不直接把未加密的应用端口转发到公网。
 
 ## 2. 拉取镜像并启动
@@ -238,7 +246,7 @@ curl http://localhost:3000/api/health
 
 ## 3. 创建首位管理员并登录
 
-v0.1.1 首次安装的推荐流程：**Docker Compose → 容器日志 → 一次性初始化验证码 →
+标准模式首次安装的推荐流程：**Docker Compose → 容器日志 → 一次性初始化验证码 →
 网页创建管理员 → 登录**。
 
 1. 在 NAS 的 **Docker → 容器 → 日志**（群晖 Container Manager 或威联通
@@ -250,20 +258,20 @@ v0.1.1 首次安装的推荐流程：**Docker Compose → 容器日志 → 一�
 3. 创建成功后点击“进入登录页面”，使用新用户名和密码登录。然后在管理后台
    创建普通用户。
 
-没有默认管理员密码。验证码仅在没有任何用户的全新实例启动时随机生成，
+没有默认管理员密码。验证码仅在初始化尚未关闭且没有任何用户的全新实例启动时随机生成，
 只输出一次到容器日志，有效期 60 分钟。**不要分享验证码，并限制容器日志
 的查看权限**；日志读取权限相当于首次管理员创建授权。验证码不由网页返回。
 过期后重启 app 并查看新的日志；重启前的验证码失效。错误验证码尝试过多时，
 等待一分钟再试。
 
-创建成功后网页初始化立即关闭。已有任何用户的实例（包括只有普通用户的
+创建成功后网页初始化立即且持久关闭，删除全部用户后也不自动重开。已有任何用户的实例（包括只有普通用户的
 实例）不会重新开放此入口；CLI 已创建管理员时也会关闭。首次初始化不等于
 公开注册。标准模式非 localhost 访问仍须可信 HTTPS，与第 1 节 Origin 和 Secure Cookie
 规则一致。
 
 ### CLI 备用方式（可选）
 
-v0.1.1 推荐使用上面的网页流程；需要时仍可使用 CLI。历史版本 v0.1.0
+v0.1.2 推荐使用网页流程；需要时仍可使用 CLI。历史版本 v0.1.0
 没有网页初始化，创建首位管理员必须使用 CLI。
 
 在服务器/NAS 的 Bash 终端执行。先把示例邮箱和用户名改为自己的值：
@@ -302,7 +310,7 @@ YAML。确认应用的环境变量配置提供了 `.env` 中的值，并在部�
 
 NAS 图形界面的环境文件和私有 registry 凭据处理随版本而异。若界面不能
 读取 `.env` 或私有 GHCR 登录，使用 NAS SSH 终端按第 2 节启动同一份文件，
-不要建立第二个应用项目。v0.1.1 可在容器日志中获取验证码，通过
+不要建立第二个应用项目。v0.1.2 标准模式可在容器日志中获取验证码，通过
 浏览器创建管理员；CLI 备用初始化、备份和恢复也可在 NAS SSH 终端执行。
 始终保留相同项目名 `navigation`；如果一开始使用 `-p` 指定其他名称，之后
 所有命令都必须使用该名称。换项目名会指向另一个数据卷，看起来像空安装。

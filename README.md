@@ -17,13 +17,14 @@ inside each instance; existing brand settings and demo defaults are retained.
 ## Release availability
 
 Source repository: [laohiog/navlume](https://github.com/laohiog/navlume).
-Published **v0.1.1**, source `699a16013eaa12b2a48708abd367dc5b6a73c361`, includes
-standard first-run web setup. Use its installation files and fixed image reference
-from the [v0.1.1 release page](https://github.com/laohiog/navlume/releases/tag/v0.1.1).
-This worktree contains an **unreleased LAN integration candidate**; the published
-v0.1.1 image does not support `INSTALL_MODE=lan-http`.
-The Git tag identifies the source commit; the release notes bind that commit to
-the published image and installation verification.
+**v0.1.2** includes standard first-run web setup and explicit LAN HTTP installation.
+Use the [v0.1.2 release page](https://github.com/laohiog/navlume/releases/tag/v0.1.2)
+for installation attachments and immutable release identity. The image was built
+from reviewed runtime source `3a9ad4c716b0f961dd089969c387603e4e631576`:
+`ghcr.io/laohiog/navlume@sha256:f1178e3a8954c00e56e5c178006224d3421ee93b739a2d71025a1a71bb80be4d`.
+The v0.1.2 Git tag also includes release documentation and fixed installation
+references; those changes do not alter runtime or claim a different image source.
+The release notes and `RELEASE-IDENTITY.json` distinguish the two revisions.
 
 No Git history or runtime data is needed to install this source snapshot.
 
@@ -44,19 +45,21 @@ ARM64 and real NAS hardware are unverified.
 
 ## Docker installation
 
-The unreleased [LAN Compose](./compose.lan.yml) supports explicit private IPv4 HTTP,
+The single-file [LAN Compose](./compose.lan.yml) supports explicit private IPv4 HTTP,
 browser setup without a log code, and an automatically persisted authentication
-key. Its image reference is a placeholder pending a separately reviewed release.
+key. Its image is pinned to the verified Registry Digest above. For a fresh
+installation, change the two NAS IP values and, if needed, the host port.
 HTTP provides no transport encryption; use a trusted LAN and firewall restrictions.
-See the candidate section in [INSTALL.md](./docs/INSTALL.md). Standard HTTPS
+Complete administrator setup promptly to prevent someone else claiming the instance.
+See the LAN section in [INSTALL.md](./docs/INSTALL.md). Standard HTTPS
 installation remains the default and retains its code and Secure cookies.
 
 For installation without Node.js or a source build, see the
 [Linux/NAS installation guide](./docs/INSTALL.md). It uses `compose.install.yml`
-and `.env.install.example`. Download the v0.1.1 installation attachments from the
+and `.env.install.example`. Download the v0.1.2 installation attachments from the
 release page; rename `default.env.install.example` to `.env.install.example`.
-Supply the verified v0.1.1 SHA tag or Registry Digest from that release's notes;
-the example image reference is a placeholder.
+The example fixes `NAV_IMAGE` to the verified Digest; generate and preserve your
+standard-mode authentication secret and configure the exact HTTPS origin.
 
 To build this source locally, create `.env` beside `compose.yml`:
 
@@ -77,7 +80,7 @@ curl http://localhost:3000/api/health
 The application applies migrations before serving requests. A fresh installation
 has no default account or demo navigation. Public sign-up is disabled.
 
-For Navlume v0.1.1, open `BETTER_AUTH_URL` in your browser, read the
+For standard-mode Navlume v0.1.2, open `BETTER_AUTH_URL` in your browser, read the
 one-time initialization code from the container logs, and create your first
 administrator on the welcome page:
 
@@ -86,15 +89,16 @@ docker compose logs app
 ```
 
 The `[setup] First-run initialization code` is random, valid for 60 minutes, and
-printed once at startup only when the database has no users. Do not share it;
+printed once at startup only when initialization is open and there are no users. Do not share it;
 restrict access to container logs. If it expires, restart the container and use
 the new code; the old one stops working. After creation, choose **进入登录页面**
 and sign in normally. This does not enable public registration or supply any
 default administrator password. Existing instances with any users cannot use
-web setup.
+web setup. Initialization remains closed after success, even if all users are
+later removed. LAN mode uses the same web flow without the code.
 
 **Historical compatibility:** v0.1.0 images do not include web setup. The CLI
-fallback remains available for v0.1.1 and is required for first administrator
+fallback remains available for v0.1.2 and is required for first administrator
 creation on v0.1.0.
 
 CLI fallback (retained), using your own email:
@@ -123,7 +127,7 @@ preserves the volume; `docker compose down -v` deletes it.
 
 Stop the application before a physical backup or restore. Store an off-volume
 backup and keep the standard-mode environment secret separately. In the LAN
-candidate, the private key is included in the full uploads backup. Restore replaces the
+mode, the private key is included in the full uploads backup. Restore replaces the
 database and uploads. See [Backup & Restore](./docs/BACKUP_RESTORE.md) and the
 installation guide for commands. JSON exports cover navigation content and do
 not replace a full-instance backup.
