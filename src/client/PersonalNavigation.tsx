@@ -609,7 +609,7 @@ function PersonalCategorySection({
   return (
     <section className="personal-category" aria-labelledby={headingId}>
       <div className="personal-category__header">
-        <h3 className="personal-category__title" id={headingId} tabIndex={-1}>
+        <h3 className="personal-category__title" id={headingId} tabIndex={-1} data-home-category="personal">
           {category.name}
         </h3>
         <div className="personal-category__controls">

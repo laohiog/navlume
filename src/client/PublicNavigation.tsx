@@ -1,6 +1,7 @@
-import { useState, type ReactNode } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 
 import { FooterContent } from './FooterContent.js';
+import { HomeNavigation } from './HomeNavigation.js';
 import { LoginForm } from './LoginForm.js';
 import { filterCategoriesByQuery } from './navigation-search.js';
 import type { PublicBranding } from './api/admin-branding.js';
@@ -196,7 +197,7 @@ function LinkCard({ link }: { link: PublicNavigationLink }) {
 function CategorySection({ category }: { category: PublicNavigationCategory }) {
   return (
     <section className="category" aria-labelledby={`category-${category.id}`}>
-      <h3 className="category__title" id={`category-${category.id}`} tabIndex={-1}>
+      <h3 className="category__title" id={`category-${category.id}`} tabIndex={-1} data-home-category="public">
         {category.name}
       </h3>
       <ul className="link-list">
@@ -332,6 +333,7 @@ export function PublicNavigationView({
   onShowLogin,
   onHideLogin,
 }: PublicNavigationViewProps) {
+  const contentRef = useRef<HTMLElement>(null);
   const isAuthenticated = session.username !== null;
 
   // login_required and no valid session: show the login screen only.
@@ -418,7 +420,7 @@ export function PublicNavigationView({
         </div>
       </header>
 
-      <main className="content">
+      <main className="content" ref={contentRef} tabIndex={-1} aria-label="导航首页">
         {!isAuthenticated && isLoginVisible ? (
           <LoginForm
             isSubmitting={login.isSubmitting}
@@ -450,6 +452,7 @@ export function PublicNavigationView({
           <FooterContent text={branding.footerText} />
         </footer>
       ) : null}
+      <HomeNavigation key={session.username === null ? 'guest' : `user:${session.username}`} contentRef={contentRef} />
     </div>
   );
 }

@@ -763,6 +763,9 @@ describe('PersonalNavigationView — UO3 empty visibility', () => {
         expect(markup).toContain('Supplier');
         expect(markup).toContain('value="example.com:8080/path"');
       }
+      if (form !== 'create') {
+        expect(markup).toContain('data-home-category="personal"');
+      }
     },
   );
 });

@@ -2502,7 +2502,8 @@ body {
 }
 
 .app :is(.link-card, .personal-link, .search, .login, .personal__form,
-  .admin-category, .admin__form, .users, .branding, .portability) {
+  .admin-category, .admin__form, .users, .branding, .portability,
+  .home-navigation, .home-category-picker) {
   --text: var(--brand-surface-text, var(--theme-text));
   --text-muted: var(--brand-surface-muted, var(--theme-text-muted));
   --text-subtle: var(--brand-surface-subtle, var(--theme-text-subtle));
@@ -2695,4 +2696,143 @@ body {
   flex-wrap: wrap;
   gap: 0.75rem;
   margin-top: 1rem;
+}
+.app--home:not(.app--login-required) {
+  position: relative;
+  padding-bottom: calc(6rem + env(safe-area-inset-bottom, 0px));
+}
+
+.home-navigation__marker {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
+}
+
+.home-navigation {
+  position: fixed;
+  right: max(1rem, env(safe-area-inset-right, 0px));
+  bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+  z-index: 10;
+  display: flex;
+  gap: 0.125rem;
+  padding: 0.25rem;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: var(--surface-raised);
+  box-shadow: 0 3px 12px rgb(0 0 0 / 8%);
+}
+
+.home-navigation[hidden],
+.home-navigation button[hidden] {
+  display: none;
+}
+
+.home-navigation button,
+.home-category-picker button {
+  font: inherit;
+  min-height: 3rem;
+  padding: 0.65rem 0.875rem;
+  border: 0;
+  border-radius: 0.375rem;
+  color: var(--text);
+  background: transparent;
+  cursor: pointer;
+}
+
+.home-navigation button {
+  min-width: 4rem;
+}
+
+.home-navigation button:hover,
+.home-category-picker button:hover {
+  background: color-mix(in srgb, var(--text) 6%, var(--surface-raised));
+}
+
+.home-category-picker {
+  width: min(25rem, calc(100% - 2rem));
+  max-height: min(42rem, 74dvh, calc(100dvh - 2rem - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)));
+  padding: 0;
+  overflow: hidden;
+  box-sizing: border-box;
+  border: 1px solid var(--border);
+  border-radius: 0.875rem;
+  color: var(--text);
+  background: var(--surface-raised);
+  box-shadow: 0 12px 40px rgb(0 0 0 / 14%);
+}
+
+.home-category-picker[open] {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.home-category-picker::backdrop {
+  background: rgb(0 0 0 / 30%);
+}
+
+/* Keep the reading position and gutter while only the category list scrolls. */
+:root:has(.home-category-picker[open]) {
+  overflow: hidden;
+  scrollbar-gutter: stable;
+}
+
+.home-category-picker__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  gap: 0.5rem;
+  padding: 0.75rem 0.875rem 0.5rem 1.25rem;
+}
+
+.home-category-picker h2 {
+  margin: 0;
+  font-size: 1.08rem;
+}
+
+.home-category-picker h3 {
+  margin: 0;
+  padding: 0.5rem 0.875rem 0.25rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.home-category-picker__header button {
+  font-size: 0.9rem;
+}
+
+.home-category-picker__list {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  min-height: 0;
+  padding: 0 0.375rem 0.75rem;
+}
+
+.home-category-picker__list section + section {
+  margin-top: 0.75rem;
+}
+
+.home-category-picker__list button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.home-navigation button:focus-visible,
+.home-category-picker button:focus-visible {
+  outline: 2px solid var(--brand-focus, var(--text));
+  outline-offset: -2px;
+}
+
+.app--home main:focus-visible {
+  outline: 3px solid var(--text);
+  outline-offset: 2px;
 }
