@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { LinkMove } from './LinkMove.js';
+import type { LinkMoveControls, LinkMoveOutcome } from './link-reorder.js';
 
 import type {
   AdminMutationOutcome,
@@ -48,6 +50,7 @@ export interface AdminPublicNavigationActions {
   ): Promise<AdminMutationOutcome>;
   deleteLink(linkId: number): Promise<AdminMutationOutcome>;
   moveLink(linkId: number, direction: -1 | 1): Promise<AdminMutationOutcome>;
+  moveLinkTo(linkId: number, position: number): Promise<LinkMoveOutcome>;
   toggleLinkVisibility(linkId: number, isVisible: boolean): Promise<AdminMutationOutcome>;
   toggleCategoryVisibility(
     categoryId: number,
@@ -253,6 +256,7 @@ function LinkForm({
 
 /** One admin link row with visibility, move, edit and delete controls. */
 function AdminLinkRow({
+  linkMove,
   link,
   index,
   total,
@@ -267,6 +271,7 @@ function AdminLinkRow({
   onToggleVisibility,
 }: {
   link: AdminPublicLink;
+  linkMove: LinkMoveControls;
   index: number;
   total: number;
   allCategories: AdminPublicCategory[];
@@ -326,6 +331,8 @@ function AdminLinkRow({
         <button className="admin__button admin__button--danger" type="button" disabled={isBusy} onClick={onDelete}>
           删除
         </button>
+        <LinkMove id={link.id} title={link.title} index={index} total={total} isBusy={isBusy}
+          isEditing={isEditing} scope="admin" controls={linkMove} />
       </div>
 
       {isEditing ? (
@@ -348,6 +355,7 @@ function AdminLinkRow({
 
 /** One admin category with its controls and links. */
 function AdminCategorySection({
+  linkMove,
   category,
   index,
   total,
@@ -373,6 +381,7 @@ function AdminCategorySection({
   onToggleLinkVisibility,
 }: {
   category: AdminPublicCategory;
+  linkMove: LinkMoveControls;
   index: number;
   total: number;
   allCategories: AdminPublicCategory[];
@@ -419,7 +428,7 @@ function AdminCategorySection({
       aria-labelledby={headingId}
     >
       <div className="admin-category__header">
-        <h3 className="admin-category__title" id={headingId}>
+        <h3 className="admin-category__title" id={headingId} tabIndex={-1}>
           {category.name}
         </h3>
         <span className="admin-link__badge">{category.isVisible ? '显示' : '隐藏'}</span>
@@ -481,6 +490,7 @@ function AdminCategorySection({
         <ul className="admin-link-list">
           {category.links.map((link, linkIndex) => (
             <AdminLinkRow
+              linkMove={linkMove}
               key={link.id}
               link={link}
               index={linkIndex}
@@ -542,6 +552,7 @@ export function AdminPublicNavigationView({
   const [editingCategoryId, setEditingCategoryId] = useState<number | null>(null);
   const [creatingLinkCategoryId, setCreatingLinkCategoryId] = useState<number | null>(null);
   const [editingLinkId, setEditingLinkId] = useState<number | null>(null);
+  const [movingLinkId, setMovingLinkId] = useState<number | null>(null);
 
   if (state.status === 'absent') {
     return null;
@@ -549,6 +560,7 @@ export function AdminPublicNavigationView({
 
   /** Reset inline form state; used after every successful mutation. */
   const closeForms = () => {
+    setMovingLinkId(null);
     setCreatingCategory(false);
     setEditingCategoryId(null);
     setCreatingLinkCategoryId(null);
@@ -557,7 +569,7 @@ export function AdminPublicNavigationView({
 
   const header = (
     <div className="admin__header">
-      <h2 className="admin__title" id="admin-title">
+      <h2 className="admin__title" id="admin-title" tabIndex={-1}>
         管理公共导航
       </h2>
       {state.status === 'ready' && !creatingCategory ? (
@@ -565,7 +577,7 @@ export function AdminPublicNavigationView({
           className="admin__button admin__button--primary"
           type="button"
           disabled={isMutating}
-          onClick={() => setCreatingCategory(true)}
+          onClick={() => { setMovingLinkId(null); setCreatingCategory(true); }}
         >
           新建分类
         </button>
@@ -629,6 +641,7 @@ export function AdminPublicNavigationView({
 
       {categories.map((category, index) => (
         <AdminCategorySection
+          linkMove={{ activeId: movingLinkId, open: (id) => { closeForms(); setMovingLinkId(id); }, submit: actions.moveLinkTo }}
           key={category.id}
           category={category}
           index={index}
@@ -638,7 +651,7 @@ export function AdminPublicNavigationView({
           editingCategoryId={editingCategoryId}
           editingLinkId={editingLinkId}
           creatingLinkCategoryId={creatingLinkCategoryId}
-          onStartRename={() => setEditingCategoryId(category.id)}
+          onStartRename={() => { setMovingLinkId(null); setEditingCategoryId(category.id); }}
           onCancelRename={() => setEditingCategoryId(null)}
           onSubmitRename={async (input) => {
             if ((await actions.updateCategory(category.id, input)).status === 'ok') {
@@ -656,14 +669,14 @@ export function AdminPublicNavigationView({
           onToggleCategoryVisibility={(isVisible) => {
             void actions.toggleCategoryVisibility(category.id, isVisible);
           }}
-          onStartCreateLink={() => setCreatingLinkCategoryId(category.id)}
+          onStartCreateLink={() => { setMovingLinkId(null); setCreatingLinkCategoryId(category.id); }}
           onCancelCreateLink={() => setCreatingLinkCategoryId(null)}
           onSubmitCreateLink={async (input) => {
             if ((await actions.createLink({ ...input, categoryId: category.id })).status === 'ok') {
               closeForms();
             }
           }}
-          onStartEditLink={(linkId) => setEditingLinkId(linkId)}
+          onStartEditLink={(linkId) => { setMovingLinkId(null); setEditingLinkId(linkId); }}
           onCancelEditLink={() => setEditingLinkId(null)}
           onSubmitEditLink={async (linkId, input) => {
             if ((await actions.updateLink(linkId, input)).status === 'ok') {

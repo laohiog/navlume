@@ -68,6 +68,7 @@ function actions(overrides: Partial<AdminPublicNavigationActions> = {}): AdminPu
     updateLink: vi.fn(),
     deleteLink: vi.fn(),
     moveLink: vi.fn(),
+    moveLinkTo: vi.fn(),
     toggleLinkVisibility: vi.fn(),
     toggleCategoryVisibility: vi.fn(),
     ...overrides,

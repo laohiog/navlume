@@ -62,6 +62,7 @@ function actions(overrides: Partial<PersonalNavigationActions> = {}): PersonalNa
     updateLink: vi.fn(),
     deleteLink: vi.fn(),
     moveLink: vi.fn(),
+    moveLinkTo: vi.fn(),
     ...overrides,
   } as PersonalNavigationActions;
 }

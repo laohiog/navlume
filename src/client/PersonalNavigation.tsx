@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
+import { LinkMove } from './LinkMove.js';
+import type { LinkMoveControls, LinkMoveOutcome } from './link-reorder.js';
 
 import type {
   PersonalCategory,
@@ -49,6 +51,7 @@ export interface PersonalNavigationActions {
   ): Promise<PersonalMutationOutcome>;
   deleteLink(linkId: number): Promise<PersonalMutationOutcome>;
   moveLink(linkId: number, direction: -1 | 1): Promise<PersonalMutationOutcome>;
+  moveLinkTo(linkId: number, position: number): Promise<LinkMoveOutcome>;
 }
 
 export interface PersonalNavigationViewProps {
@@ -415,6 +418,7 @@ function LinkForm({
  * must not be handed to the browser. The client never re-normalizes.
  */
 function PersonalLinkRow({
+  linkMove,
   link,
   owningCategoryId,
   index,
@@ -430,6 +434,7 @@ function PersonalLinkRow({
   onMove,
 }: {
   link: PersonalLink;
+  linkMove: LinkMoveControls;
   owningCategoryId: number;
   index: number;
   total: number;
@@ -489,6 +494,8 @@ function PersonalLinkRow({
           <button className="personal__button" type="button" disabled={isBusy} onClick={onDelete}>
             删除
           </button>
+          <LinkMove id={link.id} title={link.title} index={index} total={total} isBusy={isBusy}
+            isEditing={isEditing} scope="personal" controls={linkMove} />
         </div> : null}
       </div>
 
@@ -510,6 +517,7 @@ function PersonalLinkRow({
 
 /** One personal category: header controls, link list, and inline forms. */
 function PersonalCategorySection({
+  linkMove,
   category,
   index,
   total,
@@ -537,6 +545,7 @@ function PersonalCategorySection({
   onMoveLink,
 }: {
   category: PersonalCategory;
+  linkMove: LinkMoveControls;
   index: number;
   total: number;
   allCategories: PersonalCategory[];
@@ -687,6 +696,7 @@ function PersonalCategorySection({
 
             return (
             <PersonalLinkRow
+              linkMove={linkMove}
               key={link.id}
               link={link}
               owningCategoryId={category.id}
@@ -822,6 +832,7 @@ export function PersonalNavigationView({
    * become false in the first place.
    */
   const [savedLinkTitle, setSavedLinkTitle] = useState<string | null>(null);
+  const [movingLinkId, setMovingLinkId] = useState<number | null>(null);
 
   /** The `＋ 添加网址` control, so focus can return to it after a successful add. */
   const quickAddTriggerRef = useRef<HTMLButtonElement>(null);
@@ -846,7 +857,9 @@ export function PersonalNavigationView({
   const canQuickAdd = state.status === 'ready' && quickAddDefaultCategoryId !== null;
   const hasOrganizationForm =
     creatingCategory || editingCategoryId !== null ||
-    editingLinkId !== null || creatingLinkCategoryId !== null;
+    editingLinkId !== null || creatingLinkCategoryId !== null ||
+    (movingLinkId !== null && state.status === 'ready' &&
+      filterCategoriesByQuery(state.data.categories, searchQuery).some((category) => category.links.some((link) => link.id === movingLinkId)));
 
   /**
    * Page-level paste shortcut.
@@ -878,6 +891,7 @@ export function PersonalNavigationView({
       // Opening the form must not also paste into whatever was focused.
       event.preventDefault();
       setCreatingCategory(false);
+      setMovingLinkId(null);
       setQuickAddIntent({ source: 'paste', url, categoryId: null });
     };
 
@@ -893,6 +907,7 @@ export function PersonalNavigationView({
 
   /** Reset inline form state; used after every successful mutation. */
   const closeForms = () => {
+    setMovingLinkId(null);
     setCreatingCategory(false);
     setQuickAddIntent(null);
     setEditingCategoryId(null);
@@ -908,6 +923,7 @@ export function PersonalNavigationView({
    * contextual `＋` selection through the fallback.
    */
   const openQuickAdd = async (categoryId: number | null) => {
+    setMovingLinkId(null);
     setCreatingCategory(false);
     // A previous success message must not survive into the next add. The inline
     // confirmation is cleared too, so only one confirmation can ever be on screen.
@@ -926,7 +942,7 @@ export function PersonalNavigationView({
 
   const header = (
     <div className="personal__header">
-      <h2 className="personal__title" id="personal-title">
+      <h2 className="personal__title" id="personal-title" tabIndex={-1}>
         我的导航
       </h2>
       {canQuickAdd ? (
@@ -951,7 +967,7 @@ export function PersonalNavigationView({
             type="button"
             aria-pressed={isOrganizing}
             disabled={isMutating || hasOrganizationForm}
-            onClick={() => setIsOrganizing((current) => !current)}
+            onClick={() => { setMovingLinkId(null); setIsOrganizing((current) => !current); }}
           >
             {isOrganizing ? '完成整理' : '整理'}
           </button>
@@ -960,7 +976,7 @@ export function PersonalNavigationView({
               className="personal__button"
               type="button"
               disabled={isMutating}
-              onClick={() => setCreatingCategory(true)}
+              onClick={() => { setMovingLinkId(null); setCreatingCategory(true); }}
             >
               新建分类
             </button>
@@ -1145,6 +1161,7 @@ export function PersonalNavigationView({
       <div className="personal__categories">
       {visibleCategories.map((category) => (
         <PersonalCategorySection
+          linkMove={{ activeId: movingLinkId, open: (id) => { closeForms(); setMovingLinkId(id); }, submit: actions.moveLinkTo }}
           key={category.id}
           category={category}
           // Ordering controls must reflect the real category order, not the
@@ -1158,7 +1175,7 @@ export function PersonalNavigationView({
           editingCategoryId={editingCategoryId}
           editingLinkId={editingLinkId}
           creatingLinkCategoryId={creatingLinkCategoryId}
-          onStartRename={() => setEditingCategoryId(category.id)}
+          onStartRename={() => { setMovingLinkId(null); setEditingCategoryId(category.id); }}
           onCancelRename={() => setEditingCategoryId(null)}
           onSubmitRename={async (name) => {
             await actions.renameCategory(category.id, name);
@@ -1177,6 +1194,7 @@ export function PersonalNavigationView({
             void openQuickAdd(category.id);
           }}
           onStartCreateLink={() => {
+            setMovingLinkId(null);
             // A new attempt replaces any previous inline feedback.
             setInlineAddSaved(null);
             setInlineAddErrorCategoryId(null);
@@ -1215,7 +1233,7 @@ export function PersonalNavigationView({
               setInlineAddErrorCategoryId(category.id);
             }
           }}
-          onStartEditLink={(linkId) => setEditingLinkId(linkId)}
+          onStartEditLink={(linkId) => { setMovingLinkId(null); setEditingLinkId(linkId); }}
           onCancelEditLink={() => setEditingLinkId(null)}
           onSubmitEditLink={async (linkId, input) => {
             const outcome = await actions.updateLink(linkId, input);

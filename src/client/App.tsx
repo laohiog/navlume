@@ -92,6 +92,7 @@ import {
   type PortableDocument,
 } from './api/data-portability.js';
 import { planCategoryReorder, planLinkReorder } from './personal-reorder.js';
+import { planLinkMove, type LinkMoveOutcome } from './link-reorder.js';
 import { captureGeneration, isCurrentGeneration } from './portability-flow.js';
 import {
   PersonalNavigationView,
@@ -187,6 +188,7 @@ export function App({ initialLogin = false }: { initialLogin?: boolean } = {}) {
   const [personalFetch, setPersonalFetch] = useState<PersonalFetch | null>(null);
   const [personalReloadToken, setPersonalReloadToken] = useState(0);
   const [isPersonalMutating, setIsPersonalMutating] = useState(false);
+  const linkMoveBusyRef = useRef({ personal: false, admin: false });
   const [personalMutationError, setPersonalMutationError] =
     useState<PersonalMutationError | null>(null);
   const [isLoginVisible, setIsLoginVisible] = useState(initialLogin);
@@ -370,6 +372,8 @@ export function App({ initialLogin = false }: { initialLogin?: boolean } = {}) {
   // invalidates continuations before the new identity's UI can be used.
   useLayoutEffect(() => {
     portabilityEpochRef.current += 1;
+    if (linkMoveBusyRef.current.personal) setIsPersonalMutating(false);
+    if (linkMoveBusyRef.current.admin) setIsAdminMutating(false);
   }, [sessionUserId]);
 
   /**
@@ -885,8 +889,10 @@ export function App({ initialLogin = false }: { initialLogin?: boolean } = {}) {
     async (
       mutate: () => Promise<PersonalMutationOutcome>,
       isLink: boolean,
+      reloadOnSuccess = true,
     ): Promise<PersonalMutationOutcome> => {
       const requestKey = sessionUserId ?? 'guest';
+      const generation = portabilityEpochRef.current;
 
       setIsPersonalMutating(true);
       setPersonalMutationError(null);
@@ -899,8 +905,9 @@ export function App({ initialLogin = false }: { initialLogin?: boolean } = {}) {
         outcome = { status: 'error' };
       }
 
+      if (!reloadOnSuccess && generation !== portabilityEpochRef.current) return { status: 'unauthenticated' };
       if (outcome.status === 'ok') {
-        reloadPersonal();
+        if (reloadOnSuccess) reloadPersonal();
       } else if (outcome.status === 'unauthenticated') {
         // The session is gone: drop protected state, then re-check it.
         setPersonalFetch(null);
@@ -979,6 +986,7 @@ export function App({ initialLogin = false }: { initialLogin?: boolean } = {}) {
     countMatchingLinks([publicCategories, personalData?.categories ?? []], searchQuery) === 0;
 
   const personalActions: PersonalNavigationActions = {
+    moveLinkTo: (linkId, position) => moveLinkTo('personal', linkId, position),
     createCategory: (name) => runMutation(() => createPersonalCategory(name), false),
     renameCategory: (categoryId, name) =>
       runMutation(() => updatePersonalCategory(categoryId, name), false),
@@ -1207,7 +1215,8 @@ export function App({ initialLogin = false }: { initialLogin?: boolean } = {}) {
    * effect of a hide/show on the public homepage.
    */
   const runAdminMutation = useCallback(
-    async (mutate: () => Promise<AdminMutationOutcome>): Promise<AdminMutationOutcome> => {
+    async (mutate: () => Promise<AdminMutationOutcome>, reloadOnSuccess = true): Promise<AdminMutationOutcome> => {
+      const generation = portabilityEpochRef.current;
       setIsAdminMutating(true);
       setAdminMutationError(null);
 
@@ -1219,9 +1228,9 @@ export function App({ initialLogin = false }: { initialLogin?: boolean } = {}) {
         outcome = { status: 'error' };
       }
 
+      if (!reloadOnSuccess && generation !== portabilityEpochRef.current) return { status: 'unauthenticated' };
       if (outcome.status === 'ok') {
-        reloadAdmin();
-        reloadNavigation();
+        if (reloadOnSuccess) { reloadAdmin(); reloadNavigation(); }
       } else if (outcome.status === 'unauthenticated') {
         // Session gone: drop admin state and re-check the session.
         setAdminNavigation(null);
@@ -1289,6 +1298,7 @@ export function App({ initialLogin = false }: { initialLogin?: boolean } = {}) {
   };
 
   const adminActions: AdminPublicNavigationActions = {    createCategory: (input) => runAdminMutation(() => createAdminPublicCategory(input)),
+    moveLinkTo: (linkId, position) => moveLinkTo('admin', linkId, position),
     updateCategory: (categoryId, input) =>
       runAdminMutation(() => updateAdminPublicCategory(categoryId, input)),
     deleteCategory: (categoryId) => runAdminMutation(() => deleteAdminPublicCategory(categoryId)),
@@ -1319,6 +1329,73 @@ export function App({ initialLogin = false }: { initialLogin?: boolean } = {}) {
     toggleCategoryVisibility: (categoryId, isVisible) =>
       runAdminMutation(() => updateAdminPublicCategory(categoryId, { isVisible })),
   };
+
+  /** An explicit move checks current membership, then awaits the authoritative read. */
+  async function moveLinkTo(scope: 'personal' | 'admin', linkId: number, position: number): Promise<LinkMoveOutcome> {
+    const current = scope === 'personal' ? personalData : adminData;
+    const owners = current?.categories.filter((category) => category.links.some((link) => link.id === linkId)) ?? [];
+    const owner = owners[0];
+    if (owners.length !== 1 || !owner) return { status: 'error', message: '该网址已不在当前分类，请刷新后重试。' };
+    const initial = planLinkMove(owner.links.map((link) => link.id), linkId, position);
+    if (initial.status === 'invalid') return { status: 'error', message: '位置或分类内容已变化，请检查后重试。' };
+    if (initial.status === 'unchanged') return { status: 'unchanged' };
+    if (linkMoveBusyRef.current[scope] || (scope === 'personal' ? isPersonalMutating : isAdminMutating)) {
+      return { status: 'error', message: '正在保存其他操作，请稍后重试。' };
+    }
+    const generation = portabilityEpochRef.current;
+    const requestUser = sessionUserId;
+    const isCurrent = () => generation === portabilityEpochRef.current;
+    let saved = false;
+    linkMoveBusyRef.current[scope] = true;
+    const read = () => scope === 'personal' ? fetchPersonalNavigation() : fetchAdminPublicNavigation();
+    const acceptRead = (data: PersonalNavigation | AdminPublicNavigation) => {
+      if (scope === 'personal') setPersonalFetch({ sessionKey: requestUser ?? 'guest', result: { status: 'ok', data: data as PersonalNavigation } });
+      else { setAdminNavigation({ status: 'ok', data: data as AdminPublicNavigation }); reloadNavigation(); }
+      if (!data.categories.some((category) => category.id === owner.id && category.links.some((link) => link.id === linkId))) {
+        requestAnimationFrame(() => {
+          if (!isCurrent()) return;
+          const prefix = scope === 'personal' ? 'personal-category-' : 'admin-category-';
+          (document.getElementById(`${prefix}${owner.id}`) ?? document.getElementById(scope === 'personal' ? 'personal-title' : 'admin-title'))?.focus();
+        });
+      }
+    };
+    const operation = async (): Promise<PersonalMutationOutcome | AdminMutationOutcome> => {
+      const before = await read();
+      if (!isCurrent()) return { status: 'unauthenticated' };
+      if (before.status !== 'ok') return before;
+      const category = before.data.categories.find((item) => item.id === owner.id);
+      if (!category || !category.links.some((link) => link.id === linkId)) return { status: 'notfound' };
+      const plan = planLinkMove(category.links.map((link) => link.id), linkId, position);
+      if (plan.status === 'invalid') return { status: 'invalid' };
+      // An uncertain previous request may already have reached its destination.
+      if (plan.status === 'unchanged') { acceptRead(before.data); return { status: 'ok' }; }
+      const outcome = scope === 'personal'
+        ? await reorderPersonalLinks(category.id, plan.ids)
+        : await reorderAdminPublicLinks(category.id, plan.ids);
+      if (!isCurrent()) return { status: 'unauthenticated' };
+      if (outcome.status !== 'ok') return outcome;
+      saved = true;
+      const after = await read();
+      if (!isCurrent()) return { status: 'unauthenticated' };
+      if (after.status !== 'ok') return after;
+      acceptRead(after.data);
+      return { status: 'ok' };
+    };
+    try {
+      const outcome = scope === 'personal'
+        ? await runMutation(async () => { const result = await operation(); return result.status === 'forbidden' ? { status: 'error' } : result; }, true, false)
+        : await runAdminMutation(async () => { const result = await operation(); return result.status === 'conflict' ? { status: 'invalid' } : result; }, false);
+      if (!isCurrent()) return { status: 'cancelled' };
+      if (outcome.status === 'ok') return { status: 'ok' };
+      const message = saved ? '已保存，但列表刷新失败；重试前会先重新读取。'
+        : outcome.status === 'unauthenticated' ? '登录状态已失效，请重新登录。'
+        : outcome.status === 'forbidden' ? '没有管理权限。'
+        : outcome.status === 'invalid' || outcome.status === 'notfound' || outcome.status === 'conflict'
+          ? '分类内容或位置已变化，请刷新后重试。'
+          : '未能确认保存结果；重试前会先重新读取列表。';
+      return { status: 'error', message };
+    } finally { linkMoveBusyRef.current[scope] = false; }
+  }
 
   /** Non-technical text for a branding mutation failure. */
   const brandingFailureMessage = (outcome: BrandingMutationOutcome): string => {
