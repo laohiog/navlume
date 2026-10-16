@@ -17,9 +17,9 @@ inside each instance; existing brand settings and demo defaults are retained.
 ## Release availability
 
 Source repository: [laohiog/navlume](https://github.com/laohiog/navlume).
-The latest published release is [v0.1.2](https://github.com/laohiog/navlume/releases/tag/v0.1.2).
-This working tree prepares **v0.1.3 — version and documentation approved, not yet published**.
-Its installation templates use this already published and verified image:
+For **v0.1.3** release availability and installation attachments, see the
+[v0.1.3 release page](https://github.com/laohiog/navlume/releases/tag/v0.1.3).
+Its installation templates use this published and verified image:
 
 ```text
 ghcr.io/laohiog/navlume@sha256:81081c094488af19bda6fa1d0b37a582c76053084ce9410d358f15efe70af857
@@ -27,10 +27,10 @@ ghcr.io/laohiog/navlume@sha256:81081c094488af19bda6fa1d0b37a582c76053084ce9410d3
 
 Runtime source is `361aaa6439ba16e3579d097629ac75fe2df4fc91`; the separate
 release-documentation commit is recorded in the accompanying `RELEASE-IDENTITY.json`.
-The `v0.1.3` tag and GitHub Release have not been created. Documentation changes
-do not rebuild the image or change its OCI revision. Release attachment inputs
-record these identities separately; `SHA256SUMS` is calculated from their actual
-bytes. Publication requires separate authorization; no v0.1.3 download URL is available yet.
+Documentation changes do not rebuild the image or change its OCI revision.
+Release attachments record the source identities and annotated tag object
+separately; `SHA256SUMS` is calculated from their actual bytes. Use the matching
+attachments and identity record from the release page.
 
 v0.1.3 adds floating category selection and back-to-top on long navigation
 pages, plus top/bottom/specific-position moves for personal and Admin public links.
@@ -75,10 +75,9 @@ installation remains the default and retains its code and Secure cookies.
 
 For installation without Node.js or a source build, see the
 [Linux/NAS installation guide](./docs/INSTALL.md). It uses `compose.install.yml`
-and `.env.install.example`. Before publication, use the accompanying release
-attachment inputs or files from this working tree; rename the attachment
-`default.env.install.example` to `.env.install.example`. Public v0.1.3 distribution
-still requires separate approval; the existing v0.1.2 release remains available.
+and `.env.install.example`. Use the matching v0.1.3 release attachments or source
+files; rename the attachment `default.env.install.example` to `.env.install.example`.
+The historical v0.1.2 release and its original attachments remain available separately.
 The example fixes `NAV_IMAGE` to the verified Digest; generate and preserve your
 standard-mode authentication secret and configure the exact HTTPS origin.
 

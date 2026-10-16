@@ -1,4 +1,4 @@
-# Navlume v0.1.3 approved release preparation; Tag/Release not yet published.
+# Navlume v0.1.3 LAN installation template.
 # Paste as a NEW Compose project for a fresh LAN installation.
 # Image source: 361aaa6439ba16e3579d097629ac75fe2df4fc91; docs commit: see RELEASE-IDENTITY.json.
 # HTTP is unencrypted. Use a trusted LAN and promptly claim the administrator.

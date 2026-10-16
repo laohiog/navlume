@@ -1,9 +1,9 @@
 # Navlume v0.1.3 Deployment
 
-The version and release documentation are approved; the `v0.1.3` tag and GitHub
-Release have not been created. Publication requires separate authorization. The
-documentation commit is recorded in the accompanying `RELEASE-IDENTITY.json`.
-The verified runtime image already exists; documentation does not require an image rebuild.
+Release availability and attachments are listed on the
+[v0.1.3 release page](https://github.com/laohiog/navlume/releases/tag/v0.1.3).
+The documentation commit and annotated tag object are recorded separately from
+the runtime source in `RELEASE-IDENTITY.json`. Documentation does not require an image rebuild.
 
 Self-hosted deployment of Navlume as a **single
 application container**.
@@ -20,10 +20,10 @@ not the documentation commit. `RELEASE-IDENTITY.json` distinguishes
 the runtime source, documentation commit, intended tag and immutable image.
 Source builds identify their own actual revision.
 
-The latest public release remains
-[v0.1.2](https://github.com/laohiog/navlume/releases/tag/v0.1.2); its historical
-runtime source is `3a9ad4c716b0f961dd089969c387603e4e631576`. Use its original
-attachments when installing that version. v0.1.3 has no public Release URL yet.
+The historical release
+[v0.1.2](https://github.com/laohiog/navlume/releases/tag/v0.1.2) has runtime
+source `3a9ad4c716b0f961dd089969c387603e4e631576`. Use its original
+attachments when installing that version.
 
 The standalone `compose.lan.yml` explicitly sets `INSTALL_MODE=lan-http`,
 accepts one exact RFC1918 IPv4 HTTP origin and supports browser creation without a

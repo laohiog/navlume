@@ -1,8 +1,8 @@
 # Navlume v0.1.3 Docker 安装（Linux / NAS）
 
-**版本与发行资料已获批准，尚未公开发布。** `v0.1.3` Tag 和 GitHub Release 尚未创建，
-公开发布仍需单独授权。真实发行文档提交记录于随包的 `RELEASE-IDENTITY.json`；
-`SHA256SUMS` 从配套附件的实际字节计算，不代表附件已上传。
+发行状态与配套附件见 [v0.1.3 发行页面](https://github.com/laohiog/navlume/releases/tag/v0.1.3)。
+真实发行文档提交、Annotated Tag 对象和运行源码分别记录于 `RELEASE-IDENTITY.json`；
+`SHA256SUMS` 从同版附件的实际字节计算。安装时保持附件版本一致。
 
 安装者只需要 Docker、Compose 和安装文件，不需要源码、Node.js 或 npm。
 仅支持 **Linux AMD64 / x86-64**。ARM64 尚未构建和运行验证，标记为
@@ -13,7 +13,7 @@
 已发布、已验收镜像的实际源码为 `361aaa6439ba16e3579d097629ac75fe2df4fc91`，
 实际 SHA Tag 为 `sha-361aaa6439ba16e3579d097629ac75fe2df4fc91`。发行文档提交
 与该运行源码不同；不能用文档提交替代 OCI revision，也不因文档更新重建镜像。
-身份与尚未生成的发布信息见附件 `RELEASE-IDENTITY.json`。固定 Registry 镜像引用为：
+完整身份见附件 `RELEASE-IDENTITY.json`。固定 Registry 镜像引用为：
 
 ```text
 ghcr.io/laohiog/navlume@sha256:81081c094488af19bda6fa1d0b37a582c76053084ce9410d358f15efe70af857
@@ -161,7 +161,7 @@ docker info
 docker compose version
 ```
 
-使用随包的以下发行附件输入；它们尚未上传为 v0.1.3 Release：
+从 v0.1.3 发行页面获取以下同版安装附件：
 
 - `compose.install.yml`
 - `default.env.install.example`
@@ -172,7 +172,8 @@ docker compose version
 放在独立目录 `navigation`。发行附件中的 `default.env.install.example` 需先
 改名为 `.env.install.example`。附件方式无需克隆仓库；直接使用本工作区时，
 取 `compose.install.yml`、`.env.install.example` 和 `docs/INSTALL.md`，原环境模板
-无需改名。v0.1.3 Tag 尚不存在，不假定源码压缩包或下载 URL 已可用。
+无需改名。也可从 [v0.1.3 源码压缩包](https://github.com/laohiog/navlume/archive/refs/tags/v0.1.3.zip)
+提取相同的源码安装文件；附件专用的身份记录和校验值以发行页面为准。
 
 ```bash
 cd navigation
