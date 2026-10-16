@@ -12,10 +12,15 @@ This page retains the developer/source-build path (`compose.yml`). For source-fr
 Linux/NAS installation using `compose.install.yml`, see [INSTALL.md](./INSTALL.md).
 
 Public source: [laohiog/navlume](https://github.com/laohiog/navlume).
-The v0.1.3 Linux AMD64 runtime source is
-`361aaa6439ba16e3579d097629ac75fe2df4fc91`. Use
+The default prebuilt image in the current templates is
+`ghcr.io/laohiog/navlume:latest`. It tracks deliberately accepted stable releases;
+running containers update only after an explicit pull and recreation. Keep a
+verified immutable Digest for pinned deployments and compatible rollback.
+
+The original v0.1.3 release attachments remain unchanged. Their Linux AMD64 runtime
+source is `361aaa6439ba16e3579d097629ac75fe2df4fc91`, with immutable image
 `ghcr.io/laohiog/navlume@sha256:81081c094488af19bda6fa1d0b37a582c76053084ce9410d358f15efe70af857`
-for prebuilt installations. Its OCI revision remains the runtime source,
+for fixed v0.1.3 installations. Its OCI revision remains the runtime source,
 not the documentation commit. `RELEASE-IDENTITY.json` distinguishes
 the runtime source, documentation commit, intended tag and immutable image.
 Source builds identify their own actual revision.
@@ -362,8 +367,9 @@ Select the reviewed ref and supply its full 40-character SHA as `expected_commit
 The checked-out HEAD and GitHub's selected SHA must both match it, and the source
 must be clean. The image is
 `ghcr.io/laohiog/navlume:sha-<full-reviewed-public-commit>`.
-OCI labels record the public source URL, revision and version. No `latest` tag is
-created. Independent installation uses the registry Digest, preferably
+OCI labels record the public source URL, revision and version. This build workflow
+does not create or advance `latest`. Independent verification and pinned installs
+use the registry Digest, preferably
 `ghcr.io/laohiog/navlume@sha256:<digest>`.
 
 With explicit publication authorization, `publish=true` logs in using the
@@ -373,6 +379,24 @@ summary. A local image ID is not a registry Digest. Keep the summary and distrib
 installation files from the same reviewed public version. Tags can be overwritten;
 source/version binding does not promise identical rebuilds because base images
 and OS package repositories can change.
+
+### Stable latest promotion boundary
+
+1. Build and publish the candidate under its commit-specific tag; retain its Digest.
+2. Complete normal verification and the official GitHub Release.
+3. After the stable release is accepted, explicitly promote that verified manifest
+   to `latest`, without rebuilding or changing the original SHA tag or OCI labels.
+4. Independently retrieve `latest` and require its manifest Digest to equal the
+   accepted stable Digest exactly. A different result requires review.
+5. Preserve the previous stable Digest for compatible rollback.
+
+A candidate image publication alone never advances `latest`. This is a deliberate
+release action, not a new workflow or an automatic updater. Default users manually
+run `docker compose pull` and `docker compose up -d --no-build`, retaining their
+original `-f`, `-p` and environment settings. Back up first; preserve project,
+database/uploads volume, authentication secret and Origin. Never use `down -v`.
+Existing Digest-pinned users must opt into `latest` once; see
+[INSTALL §6](./INSTALL.md#6-保留数据升级) for manual update and rollback rules.
 
 Repository and package visibility are separate. This workflow changes neither.
 A newly created GHCR package may be private; before advertising a public image,

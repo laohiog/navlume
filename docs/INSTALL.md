@@ -1,16 +1,20 @@
-# Navlume v0.1.3 Docker 安装（Linux / NAS）
+# Navlume Docker 安装（Linux / NAS）
 
-发行状态与配套附件见 [v0.1.3 发行页面](https://github.com/laohiog/navlume/releases/tag/v0.1.3)。
-真实发行文档提交、Annotated Tag 对象和运行源码分别记录于 `RELEASE-IDENTITY.json`；
-`SHA256SUMS` 从同版附件的实际字节计算。安装时保持附件版本一致。
+当前源码工作区的默认安装模板使用 `ghcr.io/laohiog/navlume:latest`。它是人工确认后的
+稳定发行别名，会随后续稳定发行推进；不会自动更新已经运行的容器。手动更新见第 6 节。
+
+[v0.1.3 发行页面](https://github.com/laohiog/navlume/releases/tag/v0.1.3) 的历史附件与
+源码压缩包继续固定 v0.1.3 Digest，没有被本次默认策略修改。需要固定版本时使用其
+原附件；运行源码、文档提交与 Tag 身份见该版 `RELEASE-IDENTITY.json`。
 
 安装者只需要 Docker、Compose 和安装文件，不需要源码、Node.js 或 npm。
 仅支持 **Linux AMD64 / x86-64**。ARM64 尚未构建和运行验证，标记为
 **UNVERIFIED**，请勿在 ARM NAS 上把模拟运行当作正式支持。
 
-本文用于 **v0.1.3**，保留标准 HTTPS 与显式局域网 HTTP 两种安装方式。
+本文保留标准 HTTPS 与显式局域网 HTTP 两种安装方式，默认镜像为 `latest`。
 公开源码：[laohiog/navlume](https://github.com/laohiog/navlume)。
-已发布、已验收镜像的实际源码为 `361aaa6439ba16e3579d097629ac75fe2df4fc91`，
+**v0.1.3 不可变身份（用于固定部署与回退）：** 已验收镜像的实际源码为
+`361aaa6439ba16e3579d097629ac75fe2df4fc91`，
 实际 SHA Tag 为 `sha-361aaa6439ba16e3579d097629ac75fe2df4fc91`。发行文档提交
 与该运行源码不同；不能用文档提交替代 OCI revision，也不因文档更新重建镜像。
 完整身份见附件 `RELEASE-IDENTITY.json`。固定 Registry 镜像引用为：
@@ -35,7 +39,8 @@ v0.1.1 支持标准网页初始化，但不支持 `INSTALL_MODE=lan-http`；不�
 
 **全新实例**：`compose.lan.yml` 是可直接粘贴到 UGOS Pro Compose 项目的单文件配置，无需 `.env`、
 OpenSSL、SSH 或管理员 CLI。使用本包中的 `compose.lan.yml`，
-镜像已固定为上面的已验证 Digest。建立全新项目和新卷，不复用或覆盖已有安装；
+当前模板默认使用稳定别名 `latest`；需要固定版本时改用对应的已验证 Digest。
+建立全新项目和新卷，不复用或覆盖已有安装；
 已有实例按下方迁移说明先备份、核实原卷与原密钥。
 
 1. 将单文件配置粘贴或导入新 Compose 项目；将两处 `192.168.1.100` 改成 NAS 的实际私有 IPv4。
@@ -114,7 +119,7 @@ mkdir -p ./backups
 docker compose -p "$OLD_PROJECT" -f "$OLD_COMPOSE" cp app:/data/backups/. ./backups/
 ```
 
-3. 使用本版的单文件 `compose.lan.yml`（已固定镜像），填写 NAS IP 和端口。
+3. 使用当前单文件 `compose.lan.yml`（默认 latest），填写 NAS IP 和端口。
    在 app 的 `environment` 中加入以下一行，让原 `.env` 提供**同一个**密钥：
 
 ```yaml
@@ -161,7 +166,10 @@ docker info
 docker compose version
 ```
 
-从 v0.1.3 发行页面获取以下同版安装附件：
+默认 latest 安装使用当前源码工作区中的 `compose.install.yml` 和 `.env.install.example`，
+无需构建源码。不要与源码构建用的 `compose.yml` 混淆。
+
+需要历史固定部署时，可从 v0.1.3 发行页面获取以下原版安装附件；它们仍固定原 Digest：
 
 - `compose.install.yml`
 - `default.env.install.example`
@@ -188,13 +196,13 @@ openssl rand -base64 32
 
 | 配置 | 填什么 |
 | --- | --- |
-| `NAV_IMAGE` | 本版模板已填上方固定 Registry Digest，保留即可；如核对 SHA Tag，只认完整运行源码 361aaa6439ba16e3579d097629ac75fe2df4fc91，不用文档提交 SHA 或旧镜像 |
+| `NAV_IMAGE` | 当前模板默认为 ghcr.io/laohiog/navlume:latest；固定部署/回退可填写所选版本的已验证 Registry Digest。旧版 Digest 安装需主动改为 latest 一次，才采用后续稳定更新 |
 | `BETTER_AUTH_SECRET` | 上一步生成的随机密钥；妥善保存，升级时保留 |
 | `BETTER_AUTH_URL` | 浏览器实际访问的准确 Origin（协议、主机、端口），不加页面路径 |
 | `NAV_BIND_IP` | 默认 `127.0.0.1`；只允许本机访问应用端口 |
 | `NAV_PORT` | 默认 `3000`；冲突时换成空闲端口 |
 
-不要分享 `.env` 或把它上传到 Git。不要使用 `latest` 作为安装/升级版本。
+不要分享 `.env` 或把它上传到 Git。`latest` 是可移动稳定别名；需要锁定版本时使用 Digest。
 Compose 会拒绝空镜像、空密钥和空访问网址；填写错误的镜像版本会在拉取时报错。
 
 ### 访问方式
@@ -377,6 +385,34 @@ docker compose -f compose.install.yml start app
 替代整实例物理备份。
 
 ## 6. 保留数据升级
+
+### 默认 latest：手动拉取并重建容器
+
+1. 更新前记录当前运行版本对应的已验证 Registry Digest，作为回退地址；不要用
+   `latest` 或本地 Image ID 代替不可变 Digest。先按第 5 节停机物理备份数据库与
+   完整 uploads，并复制到卷外；另保存原 `.env`、认证密钥、Origin 和 Compose 配置。
+2. 继续使用原项目、原 `/data` 卷、原安装模式和端口。标准模式保留原认证密钥，
+   LAN 保留 uploads 中的隐藏 `.auth-secret`。不要重新生成密钥或另建项目。
+3. 当前模板已用 `latest`，后续稳定更新不必改版本。旧版安装如果固定了 Digest，
+   想采用此方式时，需主动将 `.env` 的 NAV_IMAGE 或原 LAN 文件的 image 改为
+   `ghcr.io/laohiog/navlume:latest` 一次；原 external 卷定义及其他配置保持不变。
+4. 在原安装目录，用原文件、项目及环境设置拉取并重建。标准文件示例：
+
+```bash
+docker compose -f compose.install.yml pull
+docker compose -f compose.install.yml up -d --no-build
+```
+
+默认文件名时等价于 `docker compose pull` 和 `docker compose up -d --no-build`。
+LAN 保持原 `-f compose.lan.yml`，使用过 `-p`、`--env-file` 或 NAS 项目名的继续保留。
+`pull` 只下载镜像，必须再执行 `up` 才会重建容器；`latest` 不会自动更新运行实例。
+启动后检查 healthy、原账号、个人/公共网址、排序、隐藏项、品牌和上传图片。
+**不要把 `down -v` 当作更新步骤**；它会删除数据库和 uploads 所在卷。
+
+回退时停止 app，将 image / NAV_IMAGE 改为升级前记录的兼容稳定 Digest，再按原项目、
+原卷、原 Origin 和原密钥执行 pull / up。默认不把旧备份覆盖到当前数据。未来版本若有
+迁移或兼容性限制，以该版发行说明为准；下方已验证的 v0.1.2/v0.1.3 回退结论不扩展到
+任意未来版本。`latest` 不是回退地址，也不自动决定数据库兼容性。
 
 ### v0.1.2 → v0.1.3：只更换镜像
 

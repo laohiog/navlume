@@ -19,13 +19,18 @@ inside each instance; existing brand settings and demo defaults are retained.
 Source repository: [laohiog/navlume](https://github.com/laohiog/navlume).
 For **v0.1.3** release availability and installation attachments, see the
 [v0.1.3 release page](https://github.com/laohiog/navlume/releases/tag/v0.1.3).
-Its installation templates use this published and verified image:
+The default image in this source tree's installation templates is
+`ghcr.io/laohiog/navlume:latest`, a mutable alias for an accepted stable release.
+It advances deliberately after release verification, never on every candidate build.
+
+**Pinned v0.1.3 identity:** its original Release attachments remain unchanged and
+continue to use this verified immutable image for fixed deployments and rollback:
 
 ```text
 ghcr.io/laohiog/navlume@sha256:81081c094488af19bda6fa1d0b37a582c76053084ce9410d358f15efe70af857
 ```
 
-Runtime source is `361aaa6439ba16e3579d097629ac75fe2df4fc91`; the separate
+v0.1.3 runtime source is `361aaa6439ba16e3579d097629ac75fe2df4fc91`; the separate
 release-documentation commit is recorded in the accompanying `RELEASE-IDENTITY.json`.
 Documentation changes do not rebuild the image or change its OCI revision.
 Release attachments record the source identities and annotated tag object
@@ -66,7 +71,8 @@ ARM64 and real NAS hardware are unverified.
 
 The single-file [LAN Compose](./compose.lan.yml) supports explicit private IPv4 HTTP,
 browser setup without a log code, and an automatically persisted authentication
-key. Its image is pinned to the verified Registry Digest above. For a fresh
+key. The current template uses `latest`; the original v0.1.3 attachment stays pinned.
+For a fresh
 installation, change the two NAS IP values and, if needed, the host port.
 HTTP provides no transport encryption; use a trusted LAN and firewall restrictions.
 Complete administrator setup promptly to prevent someone else claiming the instance.
@@ -75,11 +81,32 @@ installation remains the default and retains its code and Secure cookies.
 
 For installation without Node.js or a source build, see the
 [Linux/NAS installation guide](./docs/INSTALL.md). It uses `compose.install.yml`
-and `.env.install.example`. Use the matching v0.1.3 release attachments or source
-files; rename the attachment `default.env.install.example` to `.env.install.example`.
-The historical v0.1.2 release and its original attachments remain available separately.
-The example fixes `NAV_IMAGE` to the verified Digest; generate and preserve your
+and `.env.install.example`. For the default `latest` path, use these source-tree
+templates together. The original v0.1.3 release attachments/source archive remain
+pinned to v0.1.3; if using them, deliberately change `NAV_IMAGE` (or LAN `image`)
+to `latest` once to adopt manual stable updates. Release environment attachments
+use the name `default.env.install.example`; rename it to `.env.install.example`.
+The historical v0.1.2 release and its attachments also remain available separately.
+The current example sets `NAV_IMAGE=ghcr.io/laohiog/navlume:latest`; generate and preserve your
 standard-mode authentication secret and configure the exact HTTPS origin.
+
+### Manual stable updates
+
+Back up the database and complete uploads outside the volume first. Preserve the
+same Compose project, data volume, Origin and authentication secret. Then pull and
+recreate using your original Compose file/settings:
+
+```bash
+docker compose -f compose.install.yml pull
+docker compose -f compose.install.yml up -d --no-build
+```
+
+For the default Compose filename these are `docker compose pull` and
+`docker compose up -d --no-build`. Keep any original `-p`, `--env-file` or LAN
+`-f compose.lan.yml` arguments. `latest` does not update running containers
+automatically; subsequent accepted stable updates require these commands but no
+version edit. Never use `down -v`. Retain the previous verified Digest for a
+compatible, image-only rollback; see [INSTALL §6](./docs/INSTALL.md#6-保留数据升级).
 
 To build this source locally, create `.env` beside `compose.yml`:
 

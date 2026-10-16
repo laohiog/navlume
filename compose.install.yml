@@ -3,7 +3,7 @@ name: navigation
 
 services:
   app:
-    image: "${NAV_IMAGE:?NAV_IMAGE must be a published fixed version or digest; see docs/INSTALL.md}"
+    image: "${NAV_IMAGE:?NAV_IMAGE must be set; see docs/INSTALL.md}"
     platform: linux/amd64
     restart: unless-stopped
     ports:
