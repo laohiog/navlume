@@ -1,4 +1,9 @@
-# Navlume v0.1.2 Deployment
+# Navlume v0.1.3 Deployment
+
+The version and release documentation are approved; the `v0.1.3` tag and GitHub
+Release have not been created. Publication requires separate authorization. The
+documentation commit is recorded in the accompanying `RELEASE-IDENTITY.json`.
+The verified runtime image already exists; documentation does not require an image rebuild.
 
 Self-hosted deployment of Navlume as a **single
 application container**.
@@ -7,13 +12,18 @@ This page retains the developer/source-build path (`compose.yml`). For source-fr
 Linux/NAS installation using `compose.install.yml`, see [INSTALL.md](./INSTALL.md).
 
 Public source: [laohiog/navlume](https://github.com/laohiog/navlume).
-The Linux AMD64 image is `ghcr.io/laohiog/navlume`. See the
-[v0.1.2 release page](https://github.com/laohiog/navlume/releases/tag/v0.1.2) for
-the release tag, image source commit, SHA tag and Registry Digest. The verified
-image source remains `3a9ad4c716b0f961dd089969c387603e4e631576`; the release tag
-adds documentation and fixed installation references without runtime changes.
-Use `ghcr.io/laohiog/navlume@sha256:f1178e3a8954c00e56e5c178006224d3421ee93b739a2d71025a1a71bb80be4d`
-for prebuilt installations. Source builds identify their own actual revision.
+The v0.1.3 Linux AMD64 runtime source is
+`361aaa6439ba16e3579d097629ac75fe2df4fc91`. Use
+`ghcr.io/laohiog/navlume@sha256:81081c094488af19bda6fa1d0b37a582c76053084ce9410d358f15efe70af857`
+for prebuilt installations. Its OCI revision remains the runtime source,
+not the documentation commit. `RELEASE-IDENTITY.json` distinguishes
+the runtime source, documentation commit, intended tag and immutable image.
+Source builds identify their own actual revision.
+
+The latest public release remains
+[v0.1.2](https://github.com/laohiog/navlume/releases/tag/v0.1.2); its historical
+runtime source is `3a9ad4c716b0f961dd089969c387603e4e631576`. Use its original
+attachments when installing that version. v0.1.3 has no public Release URL yet.
 
 The standalone `compose.lan.yml` explicitly sets `INSTALL_MODE=lan-http`,
 accepts one exact RFC1918 IPv4 HTTP origin and supports browser creation without a
@@ -156,8 +166,9 @@ not depend on `BETTER_AUTH_URL` being reachable from inside the container.
 ## 6. Create the first administrator
 
 A fresh installation has **no administrator**, and public sign-up is disabled.
-For standard-mode Navlume v0.1.2, read `[setup] First-run initialization code` in
-`docker compose logs app`, open `BETTER_AUTH_URL`, and create the first administrator
+For standard-mode Navlume v0.1.2 and v0.1.3, read the
+`[setup] First-run initialization code` in `docker compose logs app`, open
+`BETTER_AUTH_URL`, and create the first administrator
 on the welcome page. Then choose **进入登录页面** to sign in normally. The code is
 valid for 60 minutes; a restart generates a new code on an uninitialized empty instance and
 invalidates the old one. Creation persistently closes web setup; any existing user prevents it.
@@ -166,12 +177,12 @@ flow without a code; see the LAN installation section.
 Protect container-log access and never share the code. No default password exists.
 
 **Historical compatibility:** v0.1.0 images do not contain web setup. See the
-[v0.1.2 installation guide](INSTALL.md) for standard Docker Compose → container logs →
+[installation guide](INSTALL.md) for standard Docker Compose → container logs →
 one-time code → web administrator setup → login, and the release availability
 requirements above.
 
-The CLI remains an optional fallback in v0.1.2 (required for first administrator
-creation on v0.1.0). Use one-shot variables:
+The CLI remains an optional fallback in v0.1.2 and v0.1.3 (required for
+first administrator creation on v0.1.0). Use one-shot variables:
 
 ```bash
 docker compose run --rm \
@@ -214,7 +225,17 @@ docker compose start            # start again
 docker compose down             # stop and remove the container
 ```
 
-### Upgrade without losing data
+### Prebuilt image upgrade from v0.1.2
+
+Follow [INSTALL.md §6](./INSTALL.md#6-保留数据升级): make an off-volume physical
+backup, preserve Origin, authentication secret, project and data volume, and change
+only the image. v0.1.3 introduces no API or schema changes. The isolated
+I2 runtime upgrade and same-volume rollback were verified; reverting the image
+does not normally require replacing current data with a backup. Keep the existing
+standard HTTPS or explicit LAN mode. Do not build another image for a
+documentation-only release.
+
+### Source-build upgrade
 
 ```bash
 git pull                       # or copy the new source

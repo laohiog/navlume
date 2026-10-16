@@ -3,9 +3,11 @@
 This document covers the **physical** recovery workflow: a byte-level copy of the
 complete persistent application state, and putting it back.
 
-It is deliberately narrow. Docker operator commands are documented in
-[DEPLOYMENT.md](./DEPLOYMENT.md) for source builds and [INSTALL.md](./INSTALL.md)
-for prebuilt installations. This page defines the shared recovery contract.
+It is deliberately narrow. Docker operator commands are documented in the
+[source repository's deployment guide](https://github.com/laohiog/navlume/blob/main/docs/DEPLOYMENT.md)
+for source builds and [INSTALL.md](./INSTALL.md) for prebuilt installations.
+The latter is included alongside this file in installation attachments; the
+source-build guide is not a release attachment. This page defines the shared recovery contract.
 
 ---
 

@@ -1,11 +1,12 @@
-# Navlume v0.1.2: paste as a NEW Compose project for a fresh LAN installation.
-# Image source: 3a9ad4c716b0f961dd089969c387603e4e631576 (release docs are separate).
+# Navlume v0.1.3 approved release preparation; Tag/Release not yet published.
+# Paste as a NEW Compose project for a fresh LAN installation.
+# Image source: 361aaa6439ba16e3579d097629ac75fe2df4fc91; docs commit: see RELEASE-IDENTITY.json.
 # HTTP is unencrypted. Use a trusted LAN and promptly claim the administrator.
 # Existing installations: back up first and follow docs/INSTALL.md volume rules.
 name: navlume-lan
 services:
   app:
-    image: ghcr.io/laohiog/navlume@sha256:f1178e3a8954c00e56e5c178006224d3421ee93b739a2d71025a1a71bb80be4d
+    image: ghcr.io/laohiog/navlume@sha256:81081c094488af19bda6fa1d0b37a582c76053084ce9410d358f15efe70af857
     platform: linux/amd64
     restart: unless-stopped
     ports:

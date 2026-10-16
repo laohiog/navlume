@@ -17,14 +17,33 @@ inside each instance; existing brand settings and demo defaults are retained.
 ## Release availability
 
 Source repository: [laohiog/navlume](https://github.com/laohiog/navlume).
-**v0.1.2** includes standard first-run web setup and explicit LAN HTTP installation.
-Use the [v0.1.2 release page](https://github.com/laohiog/navlume/releases/tag/v0.1.2)
-for installation attachments and immutable release identity. The image was built
-from reviewed runtime source `3a9ad4c716b0f961dd089969c387603e4e631576`:
+The latest published release is [v0.1.2](https://github.com/laohiog/navlume/releases/tag/v0.1.2).
+This working tree prepares **v0.1.3 — version and documentation approved, not yet published**.
+Its installation templates use this already published and verified image:
+
+```text
+ghcr.io/laohiog/navlume@sha256:81081c094488af19bda6fa1d0b37a582c76053084ce9410d358f15efe70af857
+```
+
+Runtime source is `361aaa6439ba16e3579d097629ac75fe2df4fc91`; the separate
+release-documentation commit is recorded in the accompanying `RELEASE-IDENTITY.json`.
+The `v0.1.3` tag and GitHub Release have not been created. Documentation changes
+do not rebuild the image or change its OCI revision. Release attachment inputs
+record these identities separately; `SHA256SUMS` is calculated from their actual
+bytes. Publication requires separate authorization; no v0.1.3 download URL is available yet.
+
+v0.1.3 adds floating category selection and back-to-top on long navigation
+pages, plus top/bottom/specific-position moves for personal and Admin public links.
+Existing ↑/↓ controls and **＋ 添加网址 → Clipboard or manual paste → Save** remain.
+There are no API, authentication, schema, dependency or installation-mode changes.
+
+**Historical v0.1.2 identity:** runtime source
+`3a9ad4c716b0f961dd089969c387603e4e631576`, image
 `ghcr.io/laohiog/navlume@sha256:f1178e3a8954c00e56e5c178006224d3421ee93b739a2d71025a1a71bb80be4d`.
-The v0.1.2 Git tag also includes release documentation and fixed installation
-references; those changes do not alter runtime or claim a different image source.
-The release notes and `RELEASE-IDENTITY.json` distinguish the two revisions.
+Its release tag points to documentation commit
+`fd97f3c6d0f04f5c0e91e99bc9ad27003f16d087`. Keep using the original release
+attachments for that historical version; do not mix their image references with
+v0.1.3.
 
 No Git history or runtime data is needed to install this source snapshot.
 
@@ -56,8 +75,10 @@ installation remains the default and retains its code and Secure cookies.
 
 For installation without Node.js or a source build, see the
 [Linux/NAS installation guide](./docs/INSTALL.md). It uses `compose.install.yml`
-and `.env.install.example`. Download the v0.1.2 installation attachments from the
-release page; rename `default.env.install.example` to `.env.install.example`.
+and `.env.install.example`. Before publication, use the accompanying release
+attachment inputs or files from this working tree; rename the attachment
+`default.env.install.example` to `.env.install.example`. Public v0.1.3 distribution
+still requires separate approval; the existing v0.1.2 release remains available.
 The example fixes `NAV_IMAGE` to the verified Digest; generate and preserve your
 standard-mode authentication secret and configure the exact HTTPS origin.
 
@@ -80,8 +101,8 @@ curl http://localhost:3000/api/health
 The application applies migrations before serving requests. A fresh installation
 has no default account or demo navigation. Public sign-up is disabled.
 
-For standard-mode Navlume v0.1.2, open `BETTER_AUTH_URL` in your browser, read the
-one-time initialization code from the container logs, and create your first
+For standard-mode Navlume v0.1.2 and v0.1.3, open `BETTER_AUTH_URL` in your
+browser, read the one-time initialization code from the container logs, and create your first
 administrator on the welcome page:
 
 ```bash
@@ -98,8 +119,8 @@ web setup. Initialization remains closed after success, even if all users are
 later removed. LAN mode uses the same web flow without the code.
 
 **Historical compatibility:** v0.1.0 images do not include web setup. The CLI
-fallback remains available for v0.1.2 and is required for first administrator
-creation on v0.1.0.
+fallback remains available for v0.1.2 and v0.1.3; it is required for first
+administrator creation on v0.1.0.
 
 CLI fallback (retained), using your own email:
 
@@ -124,6 +145,12 @@ cookies stay `Secure` in standard production. See [Deployment](./docs/DEPLOYMENT
 The `navigation-data` volume contains `/data/nav.sqlite` and `/data/uploads`.
 Keep the same Compose project and volume when upgrading. `docker compose down`
 preserves the volume; `docker compose down -v` deletes it.
+
+For v0.1.2 → v0.1.3, back up the database and complete uploads outside the
+volume, preserve the original Origin and authentication secret, then change only
+the image reference. A compatible rollback changes the image back while retaining
+the updated volume; restoring an older backup is a separate destructive recovery
+operation. See [the upgrade instructions](./docs/INSTALL.md#6-保留数据升级).
 
 Stop the application before a physical backup or restore. Store an off-volume
 backup and keep the standard-mode environment secret separately. In the LAN
