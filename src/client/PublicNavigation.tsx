@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from 'react';
+import { useRef, useState, type ReactNode, type RefObject } from 'react';
 
 import { FooterContent } from './FooterContent.js';
 import { HomeNavigation } from './HomeNavigation.js';
@@ -76,7 +76,9 @@ export interface PublicNavigationViewProps {
     onChange: (query: string) => void;
     /** True only once a resolved non-empty query matched nothing anywhere. */
     showNoResults: boolean;
+    resultCount?: number | null;
   };
+  onRetry?: () => void;
   onLogout: () => void;
   onShowLogin: () => void;
   onHideLogin: () => void;
@@ -92,19 +94,22 @@ already ignores it (see `isEditableTarget`) and pasting here behaves normally.
 function SearchBar({
   query,
   onChange,
+  inputRef,
 }: {
   query: string;
   onChange: (query: string) => void;
+  inputRef: RefObject<HTMLInputElement | null>;
 }) {
   return (
     <div className="search">
       <label className="search__field">
         <span className="search__label">搜索网址</span>
         <input
+          ref={inputRef}
           className="search__input"
           type="search"
           name="search"
-          placeholder="输入名称或网址"
+          placeholder="输入名称、网址或分类名…"
           autoComplete="off"
           value={query}
           onChange={(event) => onChange(event.target.value)}
@@ -126,6 +131,8 @@ export function DestinationIcon({ title, iconUrl }: { title: string; iconUrl: st
         <img
           src={iconUrl}
           alt=""
+          width={44}
+          height={44}
           loading="lazy"
           referrerPolicy="no-referrer"
           onError={() => setFailedUrl(iconUrl)}
@@ -294,7 +301,7 @@ export function BrandHeader({ branding }: { branding: PublicBranding }) {
   return (
     <div className="site-header__brand">
       {branding.logoPath !== null ? (
-        <img className="site-header__logo" src={branding.logoPath} alt="" />
+        <img className="site-header__logo" src={branding.logoPath} alt="" width={40} height={40} />
       ) : null}
       <div className="site-header__brand-text">
         <h1 className="site-header__name">{branding.siteName}</h1>
@@ -332,8 +339,10 @@ export function PublicNavigationView({
   onLogout,
   onShowLogin,
   onHideLogin,
+  onRetry,
 }: PublicNavigationViewProps) {
   const contentRef = useRef<HTMLElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const isAuthenticated = session.username !== null;
 
   // login_required and no valid session: show the login screen only.
@@ -345,7 +354,7 @@ export function PublicNavigationView({
         <header className="site-header">
           <BrandHeader branding={branding} />
         </header>
-        <main className="content">
+        <main className="content" id="main-content" tabIndex={-1}>
           <LoginForm
             title="请登录"
             description="此站点的公共导航需要登录后查看。"
@@ -383,9 +392,12 @@ export function PublicNavigationView({
       ) : null}
 
       {state.status === 'error' ? (
+        <div>
         <p className="status status--error" role="alert">
           公共导航暂时无法加载，请稍后重试。
         </p>
+        {onRetry ? <button className="personal__button" type="button" onClick={onRetry}>重试加载公共导航</button> : null}
+        </div>
       ) : null}
 
       <CategoryNavigation
@@ -420,7 +432,7 @@ export function PublicNavigationView({
         </div>
       </header>
 
-      <main className="content" ref={contentRef} tabIndex={-1} aria-label="导航首页">
+      <main className="content" id="main-content" ref={contentRef} tabIndex={-1} aria-label="导航首页">
         {!isAuthenticated && isLoginVisible ? (
           <LoginForm
             isSubmitting={login.isSubmitting}
@@ -433,11 +445,17 @@ export function PublicNavigationView({
           Search sits above the navigation so users do not need to know whether a
           link is personal or public before searching; it spans both sections.
         */}
-        <SearchBar query={search.query} onChange={search.onChange} />
+        <SearchBar query={search.query} onChange={search.onChange} inputRef={searchInputRef} />
+        <p className="search__count" aria-live="polite" aria-atomic="true">
+          {search.resultCount != null ? `找到 ${search.resultCount} 个网址` : search.showNoResults ? '找到 0 个网址' : ''}
+        </p>
         {search.showNoResults ? (
-          <p className="status" role="status">
-            没有找到匹配的网址
-          </p>
+          <div className="search__empty">
+            <p className="status">没有找到匹配的网址。试试域名或分类名。</p>
+            <button className="personal__button" type="button" onClick={() => {
+              search.onChange(''); searchInputRef.current?.focus();
+            }}>清空搜索</button>
+          </div>
         ) : null}
 
         {/* Personal navigation is rendered before public navigation. */}

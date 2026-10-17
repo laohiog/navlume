@@ -72,7 +72,7 @@ export function FirstRunApp() {
     return () => { active = false; controller.abort(); };
   }, [retry]);
   if (state === 'normal' || state === 'login') return <App initialLogin={state === 'login'} />;
-  return <main className="app setup">
+  return <main className="app setup" id="main-content" tabIndex={-1}>
     {state === 'setup' ? <SetupForm onLogin={() => setState('login')} requiresCode={requiresCode} /> :
       <section className="login"><p role={state === 'error' ? 'alert' : 'status'}>{state === 'error' ? '无法确认初始化状态，请检查连接后重试。' : '正在检查初始化状态…'}</p>
         {state === 'error' && <button className="login__submit" onClick={() => { setState('loading'); setRetry((value) => value + 1); }}>重试</button>}

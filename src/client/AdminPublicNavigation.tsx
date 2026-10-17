@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { ConfirmDialog } from './ModalDialog.js';
+import { useConfirmation } from './use-confirmation.js';
 import { LinkMove } from './LinkMove.js';
 import type { LinkMoveControls, LinkMoveOutcome } from './link-reorder.js';
 
@@ -553,6 +555,7 @@ export function AdminPublicNavigationView({
   const [creatingLinkCategoryId, setCreatingLinkCategoryId] = useState<number | null>(null);
   const [editingLinkId, setEditingLinkId] = useState<number | null>(null);
   const [movingLinkId, setMovingLinkId] = useState<number | null>(null);
+  const confirmation = useConfirmation();
 
   if (state.status === 'absent') {
     return null;
@@ -613,6 +616,7 @@ export function AdminPublicNavigationView({
     <section className="admin" aria-labelledby="admin-title">
       {header}
 
+      <ConfirmDialog request={confirmation.request} onDismiss={confirmation.dismiss} />
       {errorMessage !== null && errorMessage.length > 0 ? (
         <p className="admin__error" role="alert">
           {errorMessage}
@@ -659,9 +663,9 @@ export function AdminPublicNavigationView({
             }
           }}
           onDeleteCategory={() => {
-            if (window.confirm(`删除分类「${category.name}」会同时删除其中的网址，确定删除吗？`)) {
-              void actions.deleteCategory(category.id);
-            }
+            confirmation.confirm({ title: '删除公共分类', actionLabel: '删除分类',
+              message: `删除分类「${category.name}」会同时删除其中的网址，确定删除吗？`,
+              onConfirm: () => actions.deleteCategory(category.id) });
           }}
           onMoveCategory={(direction) => {
             void actions.moveCategory(category.id, direction);
@@ -684,9 +688,8 @@ export function AdminPublicNavigationView({
             }
           }}
           onDeleteLink={(link) => {
-            if (window.confirm(`确定删除网址「${link.title}」吗？`)) {
-              void actions.deleteLink(link.id);
-            }
+            confirmation.confirm({ title: '删除公共网址', actionLabel: '删除网址',
+              message: `确定删除网址「${link.title}」吗？`, onConfirm: () => actions.deleteLink(link.id) });
           }}
           onMoveLink={(linkId, direction) => {
             void actions.moveLink(linkId, direction);

@@ -1,4 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
+import { ConfirmDialog, ModalDialog } from './ModalDialog.js';
+import { useConfirmation } from './use-confirmation.js';
+import { mutationErrorMessage } from './personal-error.js';
 import { LinkMove } from './LinkMove.js';
 import type { LinkMoveControls, LinkMoveOutcome } from './link-reorder.js';
 
@@ -67,6 +70,7 @@ export interface PersonalNavigationViewProps {
    * payload, ordering, and CRUD controls are untouched.
    */
   searchQuery: string;
+  onRetry?: () => void;
 }
 
 /**
@@ -146,7 +150,7 @@ function QuickAddForm({
   categories,
   defaultCategoryId,
   isBusy,
-  hasError,
+  returnFocus,
   onSubmit,
   onCancel,
 }: {
@@ -154,15 +158,20 @@ function QuickAddForm({
   categories: PersonalCategory[];
   defaultCategoryId: number;
   isBusy: boolean;
-  /** True when the parent is showing a failed-save or invalid-URL message. */
-  hasError: boolean;
-  onSubmit: (input: { title: string; url: string; categoryId: number }) => Promise<void>;
+  returnFocus: HTMLElement | null;
+  onSubmit: (input: { title: string; url: string; categoryId: number }) => Promise<PersonalMutationOutcome>;
   onCancel: () => void;
 }) {
   const [url, setUrl] = useState(intent.url);
   const [title, setTitle] = useState('');
   // A contextual `＋` preselects its category; otherwise fall back to the default.
   const [categoryId, setCategoryId] = useState(intent.categoryId ?? defaultCategoryId);
+  const [failure, setFailure] = useState<{ field: boolean; message: string } | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const submittingRef = useRef(false);
+  const submitRef = useRef<HTMLButtonElement>(null);
+  const errorId = useId();
+  const busy = isBusy || submitting;
 
   /**
    * Move focus into the URL field when this form mounts.
@@ -176,22 +185,8 @@ function QuickAddForm({
   const urlInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    urlInputRef.current?.focus();
-  }, []);
-
-  /**
-   * Put the caret back in the URL field when a save fails or the URL is rejected.
-   *
-   * The form deliberately stays open on failure with the user's input intact, so
-   * the field they must correct is the one to focus. This runs as an effect rather
-   * than during the submit handler because the message and the field state arrive
-   * in a later commit.
-   */
-  useEffect(() => {
-    if (hasError) {
-      urlInputRef.current?.focus();
-    }
-  }, [hasError]);
+    if (failure && !busy) (failure.field ? urlInputRef.current : submitRef.current)?.focus();
+  }, [failure, busy]);
 
   const suggestion = resolveQuickAddTitle('', url);
 
@@ -207,19 +202,41 @@ function QuickAddForm({
       ? '已从剪贴板读取网址，请确认后点击添加。'
       : intent.source === 'paste'
         ? '已从粘贴内容读取网址，请确认后点击添加。'
-        : '请输入或粘贴网址。';
+        : '未能读取剪贴板，请手动粘贴网址';
 
   return (
+    <ModalDialog title="添加网址" busy={busy} returnFocus={returnFocus}
+      initialFocusRef={urlInputRef} onDismiss={onCancel}>
     <form
       className="personal__form quick-add"
+      aria-describedby={failure && !failure.field ? errorId : undefined}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' && (event.ctrlKey || event.metaKey) && !event.nativeEvent.isComposing) {
+          event.preventDefault();
+          event.currentTarget.requestSubmit();
+        }
+      }}
       onSubmit={(event) => {
         event.preventDefault();
-        if (isBusy || url.trim().length === 0) {
+        if (busy || submittingRef.current) return;
+        if (url.trim().length === 0) {
+          setFailure({ field: true, message: '请输入或粘贴网址后再添加。' });
           return;
         }
         // A blank title is resolved to the hostname suggestion. The server still
         // validates the URL and owns ownership/normalization.
-        void onSubmit({ title: resolveQuickAddTitle(title, url), url, categoryId });
+        submittingRef.current = true;
+        setSubmitting(true);
+        setFailure(null);
+        void onSubmit({ title: resolveQuickAddTitle(title, url), url, categoryId }).then((outcome) => {
+          if (!shouldCloseQuickAdd(outcome.status)) {
+            const field = outcome.status === 'invalid' || outcome.status === 'conflict';
+            setFailure({ field, message: field
+              ? `${mutationErrorMessage(outcome, true)}请检查网址或选择其他分类后再试。`
+              : '添加失败，内容已保留。请检查连接后重试；若登录已失效，请重新登录。' });
+          }
+        }).catch(() => setFailure({ field: false, message: '添加失败，内容已保留。请检查连接后重试。' }))
+          .finally(() => { submittingRef.current = false; setSubmitting(false); });
       }}
     >
       <p className="quick-add__hint">{sourceHint}</p>
@@ -230,12 +247,15 @@ function QuickAddForm({
           className="personal__input"
           type="text"
           name="quickAddUrl"
-          placeholder="example.com"
+          placeholder="例如 example.com…"
           autoComplete="off"
           value={url}
-          disabled={isBusy}
-          onChange={(event) => setUrl(event.target.value)}
+          disabled={busy}
+          aria-invalid={failure?.field || undefined}
+          aria-describedby={failure?.field ? errorId : undefined}
+          onChange={(event) => { setUrl(event.target.value); setFailure(null); }}
         />
+        {failure?.field ? <span id={errorId} className="personal__error" role="alert">{failure.message}</span> : null}
       </label>
 
       <label className="personal__field">
@@ -247,7 +267,7 @@ function QuickAddForm({
           placeholder={suggestion.length > 0 ? suggestion : '留空则使用网址域名'}
           autoComplete="off"
           value={title}
-          disabled={isBusy}
+          disabled={busy}
           onChange={(event) => setTitle(event.target.value)}
         />
       </label>
@@ -258,8 +278,8 @@ function QuickAddForm({
           className="personal__input"
           name="quickAddCategory"
           value={categoryId}
-          disabled={isBusy}
-          onChange={(event) => setCategoryId(Number(event.target.value))}
+          disabled={busy}
+          onChange={(event) => { setCategoryId(Number(event.target.value)); setFailure(null); }}
         >
           {categories.map((category) => (
             <option key={category.id} value={category.id}>
@@ -269,15 +289,17 @@ function QuickAddForm({
         </select>
       </label>
 
+      {failure && !failure.field ? <p id={errorId} className="personal__error" role="alert">{failure.message}</p> : null}
       <div className="personal__form-actions">
-        <button className="personal__button personal__button--primary" type="submit" disabled={isBusy}>
-          {isBusy ? '添加中…' : '添加'}
+        <button ref={submitRef} className="personal__button personal__button--primary" type="submit" disabled={busy}>
+          {busy ? '添加中…' : '添加'}
         </button>
-        <button className="personal__button" type="button" disabled={isBusy} onClick={onCancel}>
+        <button className="personal__button" type="button" disabled={busy} onClick={onCancel}>
           取消
         </button>
       </div>
     </form>
+    </ModalDialog>
   );
 }
 
@@ -296,7 +318,7 @@ function LinkForm({
   categories,
   submitLabel,
   isBusy,
-  hasError = false,
+  errorMessage = null,
   onSubmit,
   onCancel,
 }: {
@@ -306,19 +328,19 @@ function LinkForm({
   categories: PersonalCategory[];
   submitLabel: string;
   isBusy: boolean;
-  /**
-   * True when the parent is showing a failure for THIS form.
-   *
-   * Defaults to `false` so the shared edit usage keeps its existing behavior — only the
-   * inline create flow opts in, which keeps unrelated link-edit focus untouched.
-   */
-  hasError?: boolean;
+  errorMessage?: string | null;
   onSubmit: (input: { title: string; url: string; categoryId: number }) => Promise<void>;
   onCancel: () => void;
 }) {
   const [title, setTitle] = useState(initialTitle);
   const [url, setUrl] = useState(initialUrl);
   const [categoryId, setCategoryId] = useState(initialCategoryId);
+  const errorId = useId();
+  const formRef = useRef<HTMLFormElement>(null);
+  const fieldError = errorMessage !== null && (
+    errorMessage === mutationErrorMessage({ status: 'invalid' }, true) ||
+    errorMessage === mutationErrorMessage({ status: 'conflict' }, true)
+  );
 
   /**
    * Return the caret to the URL field when the parent reports a failure.
@@ -340,14 +362,17 @@ function LinkForm({
       return;
     }
 
-    if (hasError) {
-      urlInputRef.current?.focus();
+    if (errorMessage !== null && !isBusy) {
+      (fieldError ? urlInputRef.current : formRef.current)?.focus();
     }
-  }, [hasError]);
+  }, [errorMessage, fieldError, isBusy]);
 
   return (
     <form
+      ref={formRef}
+      tabIndex={-1}
       className="personal__form"
+      aria-describedby={errorMessage && !fieldError ? errorId : undefined}
       onSubmit={(event) => {
         event.preventDefault();
         if (isBusy || title.trim().length === 0 || url.trim().length === 0) {
@@ -375,10 +400,13 @@ function LinkForm({
           className="personal__input"
           type="text"
           name="linkUrl"
+          aria-invalid={fieldError || undefined}
+          aria-describedby={fieldError ? errorId : undefined}
           value={url}
           disabled={isBusy}
           onChange={(event) => setUrl(event.target.value)}
         />
+        {fieldError ? <span id={errorId} className="personal__error" role="alert">{errorMessage} 请检查网址或选择其他分类后再试。</span> : null}
       </label>
 
       <label className="personal__field">
@@ -398,6 +426,7 @@ function LinkForm({
         </select>
       </label>
 
+      {errorMessage && !fieldError ? <p id={errorId} className="personal__error" role="alert">{errorMessage} 内容已保留，请检查连接后重试。</p> : null}
       <div className="personal__form-actions">
         <button className="personal__button personal__button--primary" type="submit" disabled={isBusy}>
           {submitLabel}
@@ -427,6 +456,7 @@ function PersonalLinkRow({
   isOrganizing,
   isEditing,
   editingCategories,
+  errorMessage,
   onStartEdit,
   onCancelEdit,
   onSubmitEdit,
@@ -442,6 +472,7 @@ function PersonalLinkRow({
   isOrganizing: boolean;
   isEditing: boolean;
   editingCategories: PersonalCategory[];
+  errorMessage: string | null;
   onStartEdit: () => void;
   onCancelEdit: () => void;
   onSubmitEdit: (input: { title: string; url: string; categoryId: number }) => Promise<void>;
@@ -507,6 +538,7 @@ function PersonalLinkRow({
           categories={editingCategories}
           submitLabel="保存"
           isBusy={isBusy}
+          errorMessage={errorMessage}
           onSubmit={onSubmitEdit}
           onCancel={onCancelEdit}
         />
@@ -526,6 +558,7 @@ function PersonalCategorySection({
   isOrganizing,
   editingCategoryId,
   editingLinkId,
+  editingLinkError,
   creatingLinkCategoryId,
   inlineAddError,
   inlineAddSavedTitle,
@@ -553,6 +586,7 @@ function PersonalCategorySection({
   isOrganizing: boolean;
   editingCategoryId: number | null;
   editingLinkId: number | null;
+  editingLinkError: string | null;
   creatingLinkCategoryId: number | null;
   /**
    * Error text for an inline add in THIS category, or `null`.
@@ -706,6 +740,7 @@ function PersonalCategorySection({
               isOrganizing={isOrganizing}
               isEditing={editingLinkId === link.id}
               editingCategories={allCategories}
+              errorMessage={editingLinkId === link.id ? editingLinkError : null}
               onStartEdit={() => onStartEditLink(link.id)}
               onCancelEdit={onCancelEditLink}
               onSubmitEdit={(input) => onSubmitEditLink(link.id, input)}
@@ -723,7 +758,7 @@ function PersonalCategorySection({
         </p>
       ) : null}
 
-      {inlineAddError !== null && inlineAddError.length > 0 ? (
+      {inlineAddError !== null && inlineAddError.length > 0 && creatingLinkCategoryId !== category.id ? (
         <p className="personal__error" role="alert">
           {inlineAddError}
         </p>
@@ -737,7 +772,7 @@ function PersonalCategorySection({
           categories={allCategories}
           submitLabel="保存"
           isBusy={isBusy}
-          hasError={inlineAddError !== null}
+          errorMessage={inlineAddError}
           onSubmit={onSubmitCreateLink}
           onCancel={onCancelCreateLink}
         />
@@ -772,6 +807,7 @@ export function PersonalNavigationView({
   isMutating,
   errorMessage,
   searchQuery,
+  onRetry,
 }: PersonalNavigationViewProps) {
   const [isOrganizing, setIsOrganizing] = useState(false);
   const [creatingCategory, setCreatingCategory] = useState(false);
@@ -833,23 +869,15 @@ export function PersonalNavigationView({
    */
   const [savedLinkTitle, setSavedLinkTitle] = useState<string | null>(null);
   const [movingLinkId, setMovingLinkId] = useState<number | null>(null);
+  const confirmation = useConfirmation();
+  const [quickAddReturnFocus, setQuickAddReturnFocus] = useState<HTMLElement | null>(null);
+  const openingRef = useRef(false);
+  const openingEpochRef = useRef(0);
+
+  useEffect(() => () => { openingEpochRef.current += 1; }, []);
 
   /** The `＋ 添加网址` control, so focus can return to it after a successful add. */
   const quickAddTriggerRef = useRef<HTMLButtonElement>(null);
-
-  /**
-   * Move focus back to the `＋ 添加网址` control after a successful Quick Add.
-   *
-   * `QuickAddForm` unmounts on success, so without this the keyboard position
-   * falls to `<body>`. The effect runs after commit, which is required: the
-   * trigger is still `disabled` while the mutation is in flight, and a disabled
-   * control cannot receive focus.
-   */
-  useEffect(() => {
-    if (savedLinkTitle !== null) {
-      quickAddTriggerRef.current?.focus();
-    }
-  }, [savedLinkTitle]);
 
   const isQuickAddOpen = quickAddIntent !== null;
   const categoriesForQuickAdd = state.status === 'ready' ? state.data.categories : [];
@@ -878,7 +906,7 @@ export function PersonalNavigationView({
     }
 
     const handlePaste = (event: ClipboardEvent) => {
-      if (isEditableTarget(event.target)) {
+      if (isEditableTarget(event.target) || document.querySelector('dialog[open]') || openingRef.current) {
         return;
       }
 
@@ -890,6 +918,11 @@ export function PersonalNavigationView({
 
       // Opening the form must not also paste into whatever was focused.
       event.preventDefault();
+      setQuickAddReturnFocus(document.activeElement instanceof HTMLElement && document.activeElement !== document.body
+        ? document.activeElement : quickAddTriggerRef.current);
+      setSavedLinkTitle(null);
+      setInlineAddSaved(null);
+      setInlineAddErrorCategoryId(null);
       setCreatingCategory(false);
       setMovingLinkId(null);
       setQuickAddIntent({ source: 'paste', url, categoryId: null });
@@ -923,6 +956,11 @@ export function PersonalNavigationView({
    * contextual `＋` selection through the fallback.
    */
   const openQuickAdd = async (categoryId: number | null) => {
+    if (openingRef.current || document.querySelector('dialog[open]')) return;
+    openingRef.current = true;
+    const epoch = openingEpochRef.current;
+    setQuickAddReturnFocus(document.activeElement instanceof HTMLElement
+      ? document.activeElement : quickAddTriggerRef.current);
     setMovingLinkId(null);
     setCreatingCategory(false);
     // A previous success message must not survive into the next add. The inline
@@ -932,6 +970,8 @@ export function PersonalNavigationView({
     setInlineAddErrorCategoryId(null);
 
     const clipboardUrl = await readClipboardUrl();
+    openingRef.current = false;
+    if (epoch !== openingEpochRef.current || document.querySelector('dialog[open]')) return;
 
     setQuickAddIntent({
       source: clipboardUrl === null ? 'manual' : 'clipboard',
@@ -1004,6 +1044,7 @@ export function PersonalNavigationView({
         <p className="status status--error" role="alert">
           个人导航暂时无法加载，请稍后重试。
         </p>
+        {onRetry ? <button className="personal__button" type="button" onClick={onRetry}>重试加载个人导航</button> : null}
       </section>
     );
   }
@@ -1070,6 +1111,7 @@ export function PersonalNavigationView({
   return (
     <section className="personal" aria-labelledby="personal-title" data-organizing={isOrganizing}>
       {header}
+      <ConfirmDialog request={confirmation.request} onDismiss={confirmation.dismiss} />
       {isOrganizing && hasOrganizationForm ? (
         <p className="personal__organize-hint" role="status">
           请先保存或取消正在编辑的内容，再完成整理。
@@ -1082,9 +1124,9 @@ export function PersonalNavigationView({
         failure twice — once out of view above every category, and once where the user
         submitted it. Quick Add and category-level failures still use this notice.
       */}
-      {errorMessage !== null && errorMessage.length > 0 && inlineAddErrorCategoryId === null ? (
+      {errorMessage !== null && errorMessage.length > 0 && inlineAddErrorCategoryId === null && !isQuickAddOpen && editingLinkId === null ? (
         <p className="personal__error" role="alert">
-          {errorMessage}
+          {errorMessage} 请检查输入或连接后重试。
         </p>
       ) : null}
 
@@ -1105,7 +1147,7 @@ export function PersonalNavigationView({
             categories={categoriesForQuickAdd}
             defaultCategoryId={quickAddDefaultCategoryId}
             isBusy={isMutating}
-            hasError={errorMessage !== null && inlineAddErrorCategoryId === null}
+            returnFocus={quickAddReturnFocus}
             onSubmit={async (input) => {
               const outcome = await actions.createLink(input);
 
@@ -1122,6 +1164,7 @@ export function PersonalNavigationView({
                 setInlineAddErrorCategoryId(null);
                 closeForms();
               }
+              return outcome;
             }}
             onCancel={() => setQuickAddIntent(null)}
           />
@@ -1142,7 +1185,11 @@ export function PersonalNavigationView({
       ) : null}
 
       {!hasLinks && !isOrganizing && searchQuery.trim().length === 0 ? (
-        <p className="status">还没有添加网址</p>
+        <div className="personal__empty">
+          <p className="status">还没有添加网址。复制常用网址，即可加入我的导航。</p>
+          {canQuickAdd ? <button className="personal__button personal__button--primary" type="button"
+            disabled={isMutating} onClick={() => { void openQuickAdd(null); }}>＋ 添加第一个网址</button> : null}
+        </div>
       ) : null}
 
       {/*
@@ -1174,6 +1221,7 @@ export function PersonalNavigationView({
           isOrganizing={isOrganizing}
           editingCategoryId={editingCategoryId}
           editingLinkId={editingLinkId}
+          editingLinkError={errorMessage}
           creatingLinkCategoryId={creatingLinkCategoryId}
           onStartRename={() => { setMovingLinkId(null); setEditingCategoryId(category.id); }}
           onCancelRename={() => setEditingCategoryId(null)}
@@ -1182,11 +1230,9 @@ export function PersonalNavigationView({
             closeForms();
           }}
           onDeleteCategory={() => {
-            if (
-              window.confirm(`删除分类「${category.name}」会同时删除其中的网址，确定删除吗？`)
-            ) {
-              void actions.deleteCategory(category.id);
-            }
+            confirmation.confirm({ title: '删除个人分类', actionLabel: '删除分类',
+              message: `删除分类「${category.name}」会同时删除其中的网址，确定删除吗？`,
+              onConfirm: () => actions.deleteCategory(category.id) });
           }}          onMoveCategory={(direction) => {
             void actions.moveCategory(category.id, direction);
           }}
@@ -1244,9 +1290,8 @@ export function PersonalNavigationView({
             }
           }}
           onDeleteLink={(link) => {
-            if (window.confirm(`确定删除网址「${link.title}」吗？`)) {
-              void actions.deleteLink(link.id);
-            }
+            confirmation.confirm({ title: '删除个人网址', actionLabel: '删除网址',
+              message: `确定删除网址「${link.title}」吗？`, onConfirm: () => actions.deleteLink(link.id) });
           }}
           onMoveLink={(linkId, direction) => {
             void actions.moveLink(linkId, direction);

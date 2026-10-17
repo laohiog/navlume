@@ -566,6 +566,9 @@ export function App({ initialLogin = false }: { initialLogin?: boolean } = {}) {
   useEffect(() => {
     const root = document.documentElement;
     root.dataset['theme'] = publicBranding.defaultTheme;
+    const themeColor = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+    if (themeColor) themeColor.content = publicBranding.pageBackgroundColor ??
+      (publicBranding.defaultTheme === 'dark' ? '#161c25' : '#f5f7fa');
 
     const properties = brandingThemeProperties(publicBranding, homePageActive);
     for (const name of BRANDING_THEME_PROPERTIES) {
@@ -979,11 +982,9 @@ export function App({ initialLogin = false }: { initialLogin?: boolean } = {}) {
   const publicCategories = state.status === 'ready' ? state.data.categories : [];
   const publicResolved = state.status === 'ready';
   const personalResolved = !isAuthenticated || personalState.status === 'ready';
-  const showNoResults =
-    normalizeSearchQuery(searchQuery).length > 0 &&
-    publicResolved &&
-    personalResolved &&
-    countMatchingLinks([publicCategories, personalData?.categories ?? []], searchQuery) === 0;
+  const searchResultCount = normalizeSearchQuery(searchQuery).length > 0 && !isSessionPending && publicResolved && personalResolved
+    ? countMatchingLinks([publicCategories, personalData?.categories ?? []], searchQuery) : null;
+  const showNoResults = searchResultCount === 0;
 
   const personalActions: PersonalNavigationActions = {
     moveLinkTo: (linkId, position) => moveLinkTo('personal', linkId, position),
@@ -1511,7 +1512,7 @@ export function App({ initialLogin = false }: { initialLogin?: boolean } = {}) {
           </div>
         </header>
 
-        <main className="content">
+        <main className="content" id="main-content" tabIndex={-1}>
           <AdminManagementView
             onBackToHome={() => navigate('home')}
             publicNavigation={
@@ -1576,7 +1577,7 @@ export function App({ initialLogin = false }: { initialLogin?: boolean } = {}) {
             />
           </div>
         </header>
-        <main className="content">
+        <main className="content" id="main-content" tabIndex={-1}>
           <PersonalSettingsView
             key={`${personalSessionKey}:${portabilitySessionKey}`}
             actions={personalPortabilityActions}
@@ -1626,7 +1627,9 @@ export function App({ initialLogin = false }: { initialLogin?: boolean } = {}) {
         query: searchQuery,
         onChange: setSearchQuery,
         showNoResults,
+        resultCount: searchResultCount,
       }}
+      onRetry={() => setReloadToken((current) => current + 1)}
       personal={
         isAuthenticated
           ? {
@@ -1637,6 +1640,7 @@ export function App({ initialLogin = false }: { initialLogin?: boolean } = {}) {
                   isMutating={isPersonalMutating}
                   errorMessage={personalError}
                   searchQuery={searchQuery}
+                  onRetry={() => setPersonalReloadToken((current) => current + 1)}
                 />
               ),
             }

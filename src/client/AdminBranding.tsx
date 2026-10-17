@@ -1,4 +1,6 @@
 import { useRef, useState, type CSSProperties } from 'react';
+import { ConfirmDialog } from './ModalDialog.js';
+import { useConfirmation } from './use-confirmation.js';
 
 import type { BrandingMutationOutcome, BrandingSettings } from './api/admin-branding.js';
 import { brandingThemeProperties } from './branding-theme.js';
@@ -21,7 +23,7 @@ export function BrandingPreview({ branding }: { branding: BrandingSettings }) {
   return (
     <div className="branding-live-preview" role="img" aria-label="未保存的品牌外观预览" style={properties as CSSProperties}>
       <div className="branding-live-preview__identity">
-        {branding.logoPath !== null ? <img src={branding.logoPath} alt="" /> : null}
+        {branding.logoPath !== null ? <img src={branding.logoPath} alt="" width={28} height={28} /> : null}
         <strong>{branding.siteName.trim() || '导航'}</strong>
         <span>{branding.tagline || '常用网址，随手直达'}</span>
       </div>
@@ -104,7 +106,8 @@ function AssetField({
       {guidance !== undefined ? <span className="branding__asset-hint">{guidance}</span> : null}
 
       {currentPath !== null ? (
-        <img className={`branding__preview${label === '背景图片' ? ' branding__preview--background' : ''}`} src={currentPath} alt={`${label}预览`} />
+        <img className={`branding__preview${label === '背景图片' ? ' branding__preview--background' : ''}`} src={currentPath} alt={`${label}预览`}
+          width={label === '背景图片' ? 160 : 48} height={label === '背景图片' ? 72 : 48} />
       ) : (
         <span className="branding__empty">未设置</span>
       )}
@@ -200,6 +203,7 @@ export function AdminBrandingView({
    * A failed save refetches nothing, so whatever the user typed is preserved.
    */
   const [syncedFrom, setSyncedFrom] = useState<BrandingSettings | null>(null);
+  const confirmation = useConfirmation();
 
   if (data !== null && data !== syncedFrom) {
     setSyncedFrom(data);
@@ -403,9 +407,8 @@ export function AdminBrandingView({
             await actions.uploadLogo(file);
           }}
           onRemove={() => {
-            if (window.confirm('确定移除 Logo 吗？')) {
-              void actions.removeLogo();
-            }
+            confirmation.confirm({ title: '移除 Logo', actionLabel: '移除 Logo',
+              message: '确定移除 Logo 吗？', onConfirm: actions.removeLogo });
           }}
         />
         <AssetField
@@ -417,18 +420,19 @@ export function AdminBrandingView({
             await actions.uploadFavicon(file);
           }}
           onRemove={() => {
-            if (window.confirm('确定移除 Favicon 吗？')) {
-              void actions.removeFavicon();
-            }
+            confirmation.confirm({ title: '移除 Favicon', actionLabel: '移除 Favicon',
+              message: '确定移除 Favicon 吗？', onConfirm: actions.removeFavicon });
           }}
         />
         <AssetField label="背景图片" accept="image/png,image/jpeg,image/webp"
           guidance="PNG / JPEG / WebP · 最大 5 MiB" currentPath={state.data.backgroundImagePath}
           isBusy={isMutating} onUpload={async (file) => { await actions.uploadBackground(file); }}
           onRemove={() => {
-            if (window.confirm('确定移除背景图片吗？')) void actions.removeBackground();
+            confirmation.confirm({ title: '移除背景图片', actionLabel: '移除背景图片',
+              message: '确定移除背景图片吗？', onConfirm: actions.removeBackground });
           }} />
       </div>
+      <ConfirmDialog request={confirmation.request} onDismiss={confirmation.dismiss} />
     </section>
   );
 }

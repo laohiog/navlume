@@ -1092,11 +1092,11 @@ textarea::placeholder {
 /* Previews are bounded so an uploaded image cannot overflow the viewport. */
 .branding__preview {
   height: 3rem;
-  width: auto;
+  width: 3rem;
   max-width: 100%;
   object-fit: contain;
   align-self: start;
-  background-color: #fff;
+  background-color: var(--surface-raised);
   padding: 0.25rem;
   border-radius: 0.3rem;
 }
@@ -2102,17 +2102,17 @@ textarea::placeholder {
 }
 
 .app :is(.personal__button--primary, .admin__button--primary, .branding__button--primary, .users__button--primary) {
-  /* A neutral text token stays legible even when the configured accent is pale. */
-  background-color: var(--brand-tint);
-  color: var(--text);
+  background-color: var(--brand-primary);
+  color: var(--brand-on-primary);
   box-shadow: none;
   white-space: nowrap;
   border-radius: 0.4rem;
 }
 
 .app :is(.personal__button--primary, .admin__button--primary, .branding__button--primary, .users__button--primary):hover:not(:disabled) {
-  background-color: var(--surface-muted);
-  color: var(--text);
+  background-color: var(--brand-primary);
+  color: var(--brand-on-primary);
+  box-shadow: inset 0 0 0 2px var(--brand-on-primary);
   filter: none;
 }
 
@@ -2306,7 +2306,7 @@ textarea::placeholder {
   height: 100%;
   inset: 0;
   object-fit: contain;
-  background-color: #fff;
+  background-color: var(--surface-raised);
 }
 
 .destination-copy {
@@ -2503,7 +2503,7 @@ body {
 
 .app :is(.link-card, .personal-link, .search, .login, .personal__form,
   .admin-category, .admin__form, .users, .branding, .portability,
-  .home-navigation, .home-category-picker) {
+  .home-navigation, .home-category-picker, .modal-dialog) {
   --text: var(--brand-surface-text, var(--theme-text));
   --text-muted: var(--brand-surface-muted, var(--theme-text-muted));
   --text-subtle: var(--brand-surface-subtle, var(--theme-text-subtle));
@@ -2717,7 +2717,7 @@ body {
   bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
   z-index: 10;
   display: flex;
-  gap: 0.125rem;
+  gap: 0.5rem;
   padding: 0.25rem;
   border: 1px solid var(--border);
   border-radius: 0.75rem;
@@ -2879,4 +2879,58 @@ body {
 @media (max-width: 40rem) {
   .personal[data-organizing='true'] .personal-link__main:has(.link-move) { flex-wrap: wrap; }
   .personal[data-organizing='true'] .personal-link__main:has(.link-move) .personal-link__anchor { flex-basis: 100%; }
+}
+
+/* P0: native dialogs share the existing surface and runtime brand contract. */
+.modal-dialog {
+  width: min(30rem, calc(100% - 2rem));
+  max-height: calc(100dvh - 2rem - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: var(--surface-raised);
+  color: var(--text);
+  box-shadow: 0 12px 40px rgb(0 0 0 / 18%);
+  overflow-wrap: anywhere;
+}
+.modal-dialog h2 { margin: 0 0 0.75rem; font-size: 1.25rem; }
+.modal-dialog > p { margin: 0 0 1rem; }
+.modal-dialog::backdrop { background: rgb(0 0 0 / 35%); }
+.modal-dialog .quick-add { margin: 0; padding: 0; border: 0; background: transparent; box-shadow: none; }
+.modal-dialog .personal__field { min-width: 0; }
+.modal-dialog .personal__input { width: 100%; min-width: 0; }
+.modal-dialog__actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.5rem; }
+.app .modal-dialog__danger,
+.app .modal-dialog__danger:hover:not(:disabled) {
+  color: var(--danger);
+  border-color: var(--danger);
+  background: var(--surface-raised);
+}
+.modal-dialog button { min-width: 2.75rem; min-height: 2.75rem; }
+:root:has(.modal-dialog[open]) { overflow: hidden; scrollbar-gutter: stable; }
+.search__count { margin: 0.5rem 0; color: var(--text-muted); }
+.search__count:empty { display: none; }
+.search__empty, .personal__empty { margin: 0.75rem 0 1.25rem; }
+.search__empty .status, .personal__empty .status { margin-bottom: 0.5rem; }
+.skip-link {
+  position: fixed;
+  top: 0.5rem;
+  left: 0.5rem;
+  z-index: 100;
+  padding: 0.75rem 1rem;
+  transform: translateY(calc(-100% - 1rem));
+  background: var(--brand-page-background, var(--surface));
+  color: var(--brand-page-text, var(--text));
+}
+.skip-link:focus { transform: none; }
+.skip-link:focus-visible, #main-content:focus-visible {
+  outline: 3px solid var(--brand-page-text, var(--text));
+  outline-offset: 2px;
+}
+.skip-link, .modal-dialog :is(button, a), .personal__header-actions button,
+.personal__empty button, .search__empty button, .home-navigation button { touch-action: manipulation; }
+@media (max-width: 40rem) {
+  .app--home .content { padding-bottom: calc(6rem + env(safe-area-inset-bottom, 0px)); }
 }
