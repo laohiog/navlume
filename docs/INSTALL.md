@@ -2,34 +2,45 @@
 
 当前源码工作区的默认安装模板使用 `ghcr.io/laohiog/navlume:latest`。它是人工确认后的
 稳定发行别名，会随后续稳定发行推进；不会自动更新已经运行的容器。手动更新见第 6 节。
+**发行页附件不使用该别名**：它们固定本版 Digest，不跟随 `latest`，两者不要混用。
 
-[v0.1.3 发行页面](https://github.com/laohiog/navlume/releases/tag/v0.1.3) 的历史附件与
-源码压缩包继续固定 v0.1.3 Digest，没有被本次默认策略修改。需要固定版本时使用其
-原附件；运行源码、文档提交与 Tag 身份见该版 `RELEASE-IDENTITY.json`。
+[v0.2.0 发行页面](https://github.com/laohiog/navlume/releases/tag/v0.2.0) 提供与本版
+配套的附件。[v0.1.3 发行页面](https://github.com/laohiog/navlume/releases/tag/v0.1.3)
+的历史附件与源码压缩包继续固定 v0.1.3 Digest，没有被本版修改。需要固定版本时使用
+对应版本的附件；运行源码、文档提交与 Tag 身份见该版 `RELEASE-IDENTITY.json`。
 
 安装者只需要 Docker、Compose 和安装文件，不需要源码、Node.js 或 npm。
 仅支持 **Linux AMD64 / x86-64**。ARM64 尚未构建和运行验证，标记为
 **UNVERIFIED**，请勿在 ARM NAS 上把模拟运行当作正式支持。
 
-本文保留标准 HTTPS 与显式局域网 HTTP 两种安装方式，默认镜像为 `latest`。
+本文保留标准 HTTPS 与显式局域网 HTTP 两种安装方式；**仓库模板**的默认镜像为 `latest`。
 公开源码：[laohiog/navlume](https://github.com/laohiog/navlume)。
-**v0.1.3 不可变身份（用于固定部署与回退）：** 已验收镜像的实际源码为
-`361aaa6439ba16e3579d097629ac75fe2df4fc91`，
-实际 SHA Tag 为 `sha-361aaa6439ba16e3579d097629ac75fe2df4fc91`。发行文档提交
+**v0.2.0 不可变身份（用于固定部署与回退）：** 已验收镜像的实际源码为
+`bf5de8ceb2bba07513c23ff5ac440468e76de0e1`，
+实际 SHA Tag 为 `sha-bf5de8ceb2bba07513c23ff5ac440468e76de0e1`。发行文档提交
 与该运行源码不同；不能用文档提交替代 OCI revision，也不因文档更新重建镜像。
 完整身份见附件 `RELEASE-IDENTITY.json`。固定 Registry 镜像引用为：
 
 ```text
-ghcr.io/laohiog/navlume@sha256:81081c094488af19bda6fa1d0b37a582c76053084ce9410d358f15efe70af857
+ghcr.io/laohiog/navlume@sha256:9a0bcedf9ae803d0ef2ec6d7b06e246bb217e8088ce47f44ee6ca95b0091cca2
 ```
 
-v0.1.3 增加长页浮动分类选择和返回顶部、个人及管理员公共网址的置顶/置底/指定位置移动；
-原 ↑/↓、搜索和「＋ 添加网址 → 剪贴板或手动粘贴 → 保存」保持。没有 API、Auth、
-Schema、依赖或安装架构改动。
+v0.2.0 完成全站界面与交互改版：首页双密度目录、后台 196px 侧栏（窄屏保留共享页头
+与顶部模块导航）、5 套首页主题预设与高级颜色槽位，并增加搜索命中高亮与 `/` 聚焦
+搜索框。新增迁移 `0004` 只给站点设置加一个可空列，启动时自动应用；没有 API、Auth
+或依赖变更，安装架构与两种安装模式保持不变。
 
-**历史版本：**[v0.1.2 发行说明](https://github.com/laohiog/navlume/releases/tag/v0.1.2)
+**浏览器要求：** 新界面使用 `color-mix()`，需要 Chrome 111+、Safari 16.2+、
+Firefox 113+ 等现代浏览器。
+
+**历史版本：**[v0.1.3 发行说明](https://github.com/laohiog/navlume/releases/tag/v0.1.3)
+及原附件继续有效；其运行源码为 `361aaa6439ba16e3579d097629ac75fe2df4fc91`，
+不可变镜像为
+`ghcr.io/laohiog/navlume@sha256:81081c094488af19bda6fa1d0b37a582c76053084ce9410d358f15efe70af857`，
+回退步骤见第 6 节。
+[v0.1.2 发行说明](https://github.com/laohiog/navlume/releases/tag/v0.1.2)
 及原附件继续有效；其运行源码为 `3a9ad4c716b0f961dd089969c387603e4e631576`，
-发行文档提交为 `fd97f3c6d0f04f5c0e91e99bc9ad27003f16d087`，旧镜像 Digest 见第 6 节。
+发行文档提交为 `fd97f3c6d0f04f5c0e91e99bc9ad27003f16d087`。
 v0.1.1 支持标准网页初始化，但不支持 `INSTALL_MODE=lan-http`；不要用旧镜像启用 LAN。
 
 **历史兼容说明：v0.1.0 镜像不包含首次网页创建管理员。** 已有 v0.1.0 实例
@@ -38,8 +49,8 @@ v0.1.1 支持标准网页初始化，但不支持 `INSTALL_MODE=lan-http`；不�
 ## 局域网 HTTP 快捷安装（绿联 UGOS Pro 等 Compose 环境）
 
 **全新实例**：`compose.lan.yml` 是可直接粘贴到 UGOS Pro Compose 项目的单文件配置，无需 `.env`、
-OpenSSL、SSH 或管理员 CLI。使用本包中的 `compose.lan.yml`，
-当前模板默认使用稳定别名 `latest`；需要固定版本时改用对应的已验证 Digest。
+OpenSSL、SSH 或管理员 CLI。使用本包中的 `compose.lan.yml` 时，**发行页附件固定 v0.2.0 的
+Digest**；仓库中的同名模板使用 `latest`。两者不要混用。
 建立全新项目和新卷，不复用或覆盖已有安装；
 已有实例按下方迁移说明先备份、核实原卷与原密钥。
 
@@ -119,7 +130,8 @@ mkdir -p ./backups
 docker compose -p "$OLD_PROJECT" -f "$OLD_COMPOSE" cp app:/data/backups/. ./backups/
 ```
 
-3. 使用当前单文件 `compose.lan.yml`（默认 latest），填写 NAS IP 和端口。
+3. 使用当前单文件 `compose.lan.yml`（仓库模板为 `latest`；发行附件固定 v0.2.0 Digest），
+   填写 NAS IP 和端口。
    在 app 的 `environment` 中加入以下一行，让原 `.env` 提供**同一个**密钥：
 
 ```yaml
@@ -169,7 +181,9 @@ docker compose version
 默认 latest 安装使用当前源码工作区中的 `compose.install.yml` 和 `.env.install.example`，
 无需构建源码。不要与源码构建用的 `compose.yml` 混淆。
 
-需要历史固定部署时，可从 v0.1.3 发行页面获取以下原版安装附件；它们仍固定原 Digest：
+需要发行页附件时，可从 v0.2.0 发行页面获取以下本版安装附件；v0.1.3 及更早版本的原附件
+继续在其发行页面提供。这些附件把镜像引用固定为 v0.2.0 的 Digest（标准模式在
+`default.env.install.example`，LAN 在 `compose.lan.yml`），**不跟随 `latest`**：
 
 - `compose.install.yml`
 - `default.env.install.example`
@@ -180,8 +194,10 @@ docker compose version
 放在独立目录 `navigation`。发行附件中的 `default.env.install.example` 需先
 改名为 `.env.install.example`。附件方式无需克隆仓库；直接使用本工作区时，
 取 `compose.install.yml`、`.env.install.example` 和 `docs/INSTALL.md`，原环境模板
-无需改名。也可从 [v0.1.3 源码压缩包](https://github.com/laohiog/navlume/archive/refs/tags/v0.1.3.zip)
+无需改名。也可从 [v0.2.0 源码压缩包](https://github.com/laohiog/navlume/archive/refs/tags/v0.2.0.zip)
 提取相同的源码安装文件；附件专用的身份记录和校验值以发行页面为准。
+源码压缩包内的模板仍使用 `latest`，发行附件才固定 Digest；需要让附件实例改为跟随
+稳定版时，按第 6 节在原项目中把镜像引用换成 `latest` 一次，其余配置保持不变。
 
 ```bash
 cd navigation
@@ -290,7 +306,7 @@ curl http://localhost:3000/api/health
 
 ### CLI 备用方式（可选）
 
-v0.1.3 沿用 v0.1.2 的网页流程；需要时仍可使用 CLI。历史版本 v0.1.0
+v0.2.0 沿用 v0.1.x 的网页流程；需要时仍可使用 CLI。历史版本 v0.1.0
 没有网页初始化，创建首位管理员必须使用 CLI。
 
 在服务器/NAS 的 Bash 终端执行。先把示例邮箱和用户名改为自己的值：
@@ -393,9 +409,10 @@ docker compose -f compose.install.yml start app
    完整 uploads，并复制到卷外；另保存原 `.env`、认证密钥、Origin 和 Compose 配置。
 2. 继续使用原项目、原 `/data` 卷、原安装模式和端口。标准模式保留原认证密钥，
    LAN 保留 uploads 中的隐藏 `.auth-secret`。不要重新生成密钥或另建项目。
-3. 当前模板已用 `latest`，后续稳定更新不必改版本。旧版安装如果固定了 Digest，
-   想采用此方式时，需主动将 `.env` 的 NAV_IMAGE 或原 LAN 文件的 image 改为
-   `ghcr.io/laohiog/navlume:latest` 一次；原 external 卷定义及其他配置保持不变。
+3. 当前仓库模板已用 `latest`，后续稳定更新不必改版本。旧版安装或**发行页附件**
+   如果固定了 Digest（v0.2.0 发行附件即属此情形），想采用此方式时，需主动将 `.env`
+   的 NAV_IMAGE 或原 LAN 文件的 image 改为 `ghcr.io/laohiog/navlume:latest` 一次；
+   原 external 卷定义及其他配置保持不变。
 4. 在原安装目录，用原文件、项目及环境设置拉取并重建。标准文件示例：
 
 ```bash
@@ -411,8 +428,41 @@ LAN 保持原 `-f compose.lan.yml`，使用过 `-p`、`--env-file` 或 NAS 项�
 
 回退时停止 app，将 image / NAV_IMAGE 改为升级前记录的兼容稳定 Digest，再按原项目、
 原卷、原 Origin 和原密钥执行 pull / up。默认不把旧备份覆盖到当前数据。未来版本若有
-迁移或兼容性限制，以该版发行说明为准；下方已验证的 v0.1.2/v0.1.3 回退结论不扩展到
-任意未来版本。`latest` 不是回退地址，也不自动决定数据库兼容性。
+迁移或兼容性限制，以该版发行说明为准；下方已验证的 v0.1.2 → v0.1.3 与
+v0.1.3 → v0.2.0 回退结论不扩展到任意未来版本。`latest` 不是回退地址，也不自动决定
+数据库兼容性。
+
+### v0.1.3 → v0.2.0：只更换镜像（自动应用一条可空列迁移）
+
+v0.2.0 没有 API、Auth 或依赖变更；新增迁移 `0004` 只执行
+`ALTER TABLE site_settings ADD home_theme_config text`（可空列），启动时自动应用。
+旧数据与旧备份都不需要改写。以下结论来自隔离环境的实测，不推断其他版本。
+
+1. 按第 5 节停机物理备份数据库与完整 uploads，并记录当前 v0.1.3 Digest
+   （`sha256:81081c094488af19bda6fa1d0b37a582c76053084ce9410d358f15efe70af857`）
+   作为回退地址。
+2. 保留原项目、原 `/data` 卷、原 Origin、原认证密钥与安装模式，只改 `.env` 的
+   `NAV_IMAGE` 或原 LAN Compose 的 `image`。
+3. 在原目录执行以下命令，等待 `healthy`。原 LAN 安装把文件名换成原
+   `compose.lan.yml`，其余参数保持不变：
+
+```bash
+docker compose -f compose.install.yml config --quiet
+docker compose -f compose.install.yml pull
+docker compose -f compose.install.yml up -d --no-build
+docker compose -f compose.install.yml ps
+```
+
+4. 用原账号登录，检查个人/公共网址、排序、品牌与上传图片。首页主题与颜色是新增
+   设置，旧站点在未配置时使用自动配色，无需手动迁移。
+5. 实测结论：迁移记录 4 → 5，分类/链接/用户数量不变，原密码仍可登录；数据库
+   `integrity_check` 为 `ok`、`foreign_key_check` 无违规。
+
+**回退：** 停止 app，把镜像改回上面的 v0.1.3 Digest，按同一项目、同一卷、同一 Origin
+和同一密钥执行 `pull` / `up -d --no-build`。已实测旧镜像可在**升级后**的数据库上正常
+启动、读取数据并登录，因为 `0004` 只是可空列。注意：回退期间 v0.2.0 保存的首页主题
+设置不会生效（旧版本不读取该列），数据本身不丢失；重新升级时该列可被 v0.2.0 重新读取，
+但**此往返未单独实测，不作保证**。
 
 ### v0.1.2 → v0.1.3：只更换镜像
 

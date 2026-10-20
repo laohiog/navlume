@@ -1,7 +1,7 @@
-# Navlume v0.1.3 Deployment
+# Navlume v0.2.0 Deployment
 
 Release availability and attachments are listed on the
-[v0.1.3 release page](https://github.com/laohiog/navlume/releases/tag/v0.1.3).
+[v0.2.0 release page](https://github.com/laohiog/navlume/releases/tag/v0.2.0).
 The documentation commit and annotated tag object are recorded separately from
 the runtime source in `RELEASE-IDENTITY.json`. Documentation does not require an image rebuild.
 
@@ -17,13 +17,24 @@ The default prebuilt image in the current templates is
 running containers update only after an explicit pull and recreation. Keep a
 verified immutable Digest for pinned deployments and compatible rollback.
 
-The original v0.1.3 release attachments remain unchanged. Their Linux AMD64 runtime
-source is `361aaa6439ba16e3579d097629ac75fe2df4fc91`, with immutable image
-`ghcr.io/laohiog/navlume@sha256:81081c094488af19bda6fa1d0b37a582c76053084ce9410d358f15efe70af857`
-for fixed v0.1.3 installations. Its OCI revision remains the runtime source,
+The repository templates keep `latest`. The v0.2.0 release attachments instead pin
+the verified Digest in `default.env.install.example` and `compose.lan.yml`, so a
+Digest-pinned installation does not follow `latest`; switching it to follow stable
+releases is an explicit edit that keeps the project, data volume, secret and Origin.
+Publishing a GitHub Release does not promote `latest`.
+
+The v0.2.0 release attachments are the current set. Their Linux AMD64 runtime
+source is `bf5de8ceb2bba07513c23ff5ac440468e76de0e1`, with immutable image
+`ghcr.io/laohiog/navlume@sha256:9a0bcedf9ae803d0ef2ec6d7b06e246bb217e8088ce47f44ee6ca95b0091cca2`
+for fixed v0.2.0 installations. Its OCI revision remains the runtime source,
 not the documentation commit. `RELEASE-IDENTITY.json` distinguishes
 the runtime source, documentation commit, intended tag and immutable image.
 Source builds identify their own actual revision.
+
+The v0.1.3 release attachments remain unchanged. Their runtime source is
+`361aaa6439ba16e3579d097629ac75fe2df4fc91`, with immutable image
+`ghcr.io/laohiog/navlume@sha256:81081c094488af19bda6fa1d0b37a582c76053084ce9410d358f15efe70af857`
+for fixed v0.1.3 installations and rollback.
 
 The historical release
 [v0.1.2](https://github.com/laohiog/navlume/releases/tag/v0.1.2) has runtime
@@ -171,7 +182,7 @@ not depend on `BETTER_AUTH_URL` being reachable from inside the container.
 ## 6. Create the first administrator
 
 A fresh installation has **no administrator**, and public sign-up is disabled.
-For standard-mode Navlume v0.1.2 and v0.1.3, read the
+For standard-mode Navlume v0.1.2 and later, read the
 `[setup] First-run initialization code` in `docker compose logs app`, open
 `BETTER_AUTH_URL`, and create the first administrator
 on the welcome page. Then choose **进入登录页面** to sign in normally. The code is
@@ -186,7 +197,7 @@ Protect container-log access and never share the code. No default password exist
 one-time code → web administrator setup → login, and the release availability
 requirements above.
 
-The CLI remains an optional fallback in v0.1.2 and v0.1.3 (required for
+The CLI remains an optional fallback in v0.1.2 and later (required for
 first administrator creation on v0.1.0). Use one-shot variables:
 
 ```bash
@@ -230,15 +241,17 @@ docker compose start            # start again
 docker compose down             # stop and remove the container
 ```
 
-### Prebuilt image upgrade from v0.1.2
+### Prebuilt image upgrade from v0.1.3
 
 Follow [INSTALL.md §6](./INSTALL.md#6-保留数据升级): make an off-volume physical
 backup, preserve Origin, authentication secret, project and data volume, and change
-only the image. v0.1.3 introduces no API or schema changes. The isolated
-I2 runtime upgrade and same-volume rollback were verified; reverting the image
-does not normally require replacing current data with a backup. Keep the existing
-standard HTTPS or explicit LAN mode. Do not build another image for a
-documentation-only release.
+only the image. v0.2.0 adds no API, authentication or dependency changes; migration
+`0004` only adds a nullable `site_settings.home_theme_config` column and is applied on
+start. The isolated runtime upgrade (migrations 4 → 5, existing data and sign-in
+preserved) and same-volume rollback to v0.1.3 were verified; reverting the image does
+not normally require replacing current data with a backup, although saved home-theme
+settings are ignored while the older image runs. Keep the existing standard HTTPS or
+explicit LAN mode. Do not build another image for a documentation-only release.
 
 ### Source-build upgrade
 

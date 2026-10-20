@@ -9,7 +9,7 @@
 
 **Simple · Brandable · Self-hosted · Portable · Fast**
 
-[![Release](https://img.shields.io/badge/Release-v0.1.3-334155?style=flat-square)](https://github.com/laohiog/navlume/releases/tag/v0.1.3)
+[![Release](https://img.shields.io/badge/Release-v0.2.0-334155?style=flat-square)](https://github.com/laohiog/navlume/releases/tag/v0.2.0)
 [![Docker](https://img.shields.io/badge/Deployment-Docker-2563EB?style=flat-square)](#快速开始)
 [![License](https://img.shields.io/badge/License-MIT-64748B?style=flat-square)](./LICENSE)
 
@@ -33,9 +33,9 @@ Navlume 专注于三件事：**找到网址、保存网址、在不同设备上�
 | --- | --- |
 | **公共与个人导航** | 使用公共网址入口，同时管理只有自己能看到的收藏与分类 |
 | **快速添加网址** | 点击「＋ 添加网址」，从剪贴板读取或手动粘贴后保存 |
-| **搜索与整理** | 搜索网址、调整分类与排序；长页面可快速切换分类、返回顶部 |
+| **搜索与整理** | 搜索网址并高亮命中位置，按 `/` 立即聚焦搜索框；调整分类与排序，长页面可快速切换分类、返回顶部 |
 | **多设备使用** | 在电脑或手机上登录同一账号，使用服务器保存的个人导航 |
-| **品牌化** | 设置站点名称、标志、图标、品牌颜色和显示风格 |
+| **品牌化** | 设置站点名称、标志、图标、品牌颜色，并从 5 套首页主题与高级颜色中调整显示风格 |
 | **管理后台** | 维护公共导航、管理用户和站点设置 |
 | **数据迁移与备份** | JSON 导入导出；完整备份和恢复 SQLite 数据库与上传文件 |
 
@@ -76,7 +76,7 @@ curl -fL -o .env \
 chmod 600 .env
 ```
 
-也可以手动下载上述两个文件并保存为 `compose.install.yml` 和 `.env`，然后导入自己的 Docker 管理工具。**这两个文件应来自同一版本的模板。** 若使用发行页的历史附件，请同时使用该发行版配套的环境模板和镜像引用，避免混用。
+也可以手动下载上述两个文件并保存为 `compose.install.yml` 和 `.env`，然后导入自己的 Docker 管理工具。**这两个文件应来自同一版本的模板。** 若使用发行页附件，请同时使用该发行版配套的环境模板和镜像引用：**发行附件固定该版 Digest，仓库中的模板使用 `latest`**，两者不要混用。
 
 **2. 配置访问地址和认证密钥**
 
@@ -99,7 +99,7 @@ NAV_PORT=3000
 - **本机试用：** 使用上述 `localhost` 配置，仅从运行 Docker 的本机浏览器访问。
 - **使用域名：** 将 `BETTER_AUTH_URL` 改为用户实际访问的 HTTPS 地址，例如 `https://nav.example.com`，不要附加页面路径。
 - **密钥保管：** 密钥不能为空、不能公开，日后升级须保持原值；不要把填好的 `.env` 提交到 Git 仓库。
-- **镜像版本：** `latest` 是经稳定版发布流程推进的**可变别名**，拉取和重建容器才会更新。需要锁定版本时，可以改用下方列出的 v0.1.3 固定镜像摘要。
+- **镜像版本：** `latest` 是经稳定版发布流程推进的**可变别名**，拉取和重建容器才会更新。需要锁定版本时，可以改用下方列出的 v0.2.0 固定镜像摘要。
 
 默认 `NAV_BIND_IP=127.0.0.1`，不会将应用端口直接开放到公网。
 
@@ -238,16 +238,26 @@ docker compose -f compose.install.yml start app
 
 ## 发行版本与兼容性
 
-- **当前文档对应发行：** [Navlume v0.1.3](https://github.com/laohiog/navlume/releases/tag/v0.1.3)。该版本增加长页面浮动分类选择、返回顶部及更方便的网址排序操作。
+- **当前文档对应发行：** [Navlume v0.2.0](https://github.com/laohiog/navlume/releases/tag/v0.2.0)。该版本完成全站界面与交互改版：首页双密度目录、后台 196px 侧栏、5 套首页主题与高级配色，并增加搜索命中高亮与 `/` 聚焦搜索框。
 - **镜像：** `ghcr.io/laohiog/navlume:latest` 是人工推进的稳定版别名，**不是不可变版本号**，也不会自动更新运行中的容器。
-- **固定 v0.1.3 镜像（适合锁定版本和回退）：**
+- **固定 v0.2.0 镜像（适合锁定版本和回退）：**
+
+  ```text
+  ghcr.io/laohiog/navlume@sha256:9a0bcedf9ae803d0ef2ec6d7b06e246bb217e8088ce47f44ee6ca95b0091cca2
+  ```
+
+- **历史固定 v0.1.3 镜像：**
 
   ```text
   ghcr.io/laohiog/navlume@sha256:81081c094488af19bda6fa1d0b37a582c76053084ce9410d358f15efe70af857
   ```
 
+- **发行附件与仓库模板的区别：** 发行页的 `default.env.install.example` 与 `compose.lan.yml` 固定 v0.2.0 的 Digest，**不会跟随 `latest`**；仓库中的同名模板使用 `latest`。固定 Digest 的实例如需跟随稳定版，可在原项目、原数据卷、原认证密钥与 Origin 不变的前提下，把镜像引用改成 `ghcr.io/laohiog/navlume:latest` 一次。**发布 GitHub Release 不等于 `latest` 已提升。**
+- **升级与回退：** v0.1.3 → v0.2.0 在启动时自动应用迁移 `0004`（为站点设置增加一个可空列），已实测保留原数据与登录；回退到 v0.1.3 镜像可直接运行同一数据卷，但**回退期间已保存的首页主题不生效**，数据不丢失。
+- **浏览器要求：** 新界面使用 `color-mix()`，需要 Chrome 111+、Safari 16.2+ 或 Firefox 113+ 等现代浏览器。
 - **支持边界：** 已验证的预构建镜像平台为 Linux AMD64；ARM64 和具体 NAS 硬件未完成实机验证。不同平台的 Compose 管理工具界面也未逐一验证。
-- **版本核对：** v0.1.3 的镜像运行源码与发行文档提交是不同的 Git 提交。需要复现构建或验证发行身份，请使用[原版发行附件](https://github.com/laohiog/navlume/releases/tag/v0.1.3)中的 `RELEASE-IDENTITY.json` 与 `SHA256SUMS`；不要混用不同版本的附件。
+- **版本核对：** v0.2.0 的镜像运行源码与发行文档提交是不同的 Git 提交。需要复现构建或验证发行身份，请使用[原版发行附件](https://github.com/laohiog/navlume/releases/tag/v0.2.0)中的 `RELEASE-IDENTITY.json` 与 `SHA256SUMS`；不要混用不同版本的附件。
+- **已知问题：** 首页异步加载时仍可能出现布局位移（CLS）。这是既有已知问题（非本版引入），本版未修复，生产环境未量化验证。
 
 ## 常见问题
 
