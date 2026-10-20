@@ -21,6 +21,7 @@ const BRANDING = {
   primaryColor: null,
   defaultTheme: 'light' as const,
   footerText: 'Self-hosted navigation',
+  homeThemeConfig: null,
 };
 
 const SITE: NonNullable<PublicNavigation['site']> = {
@@ -53,7 +54,8 @@ function props(overrides: Partial<PublicNavigationViewProps> = {}): PublicNaviga
     personal: null,
     adminEntry: null,
     settingsEntry: null,
-    branding: { siteName: '导航', tagline: null, logoPath: null, faviconPath: null, primaryColor: null, pageBackgroundColor: null, surfaceColor: null, backgroundImagePath: null, defaultTheme: 'light', footerText: null },
+    branding: { siteName: '导航', tagline: null, logoPath: null, faviconPath: null, primaryColor: null, pageBackgroundColor: null, surfaceColor: null, backgroundImagePath: null, defaultTheme: 'light', footerText: null,
+      homeThemeConfig: null, },
     search: { query: '', onChange: vi.fn(), showNoResults: false },
     onLogout: vi.fn(),
     onShowLogin: vi.fn(),
@@ -303,6 +305,62 @@ describe('PublicNavigationView — populated (public guest)', () => {
     expect(markup).toContain('No Description');
     expect(markup).not.toContain('link-card__description');
     expect(markup).toContain('class="destination-secondary">example.com</span>');
+  });
+});
+
+/**
+ * T4.4 Visual Adjustment 01 — the description is rendered, not folded away.
+ *
+ * The previous candidate put the description in the anchor's `title`, which made
+ * it reachable only by hover. These assertions pin the *visible* rendering: the
+ * description has to be its own element in the row, and the host has to be a
+ * separate right-hand column rather than sharing the second line with it.
+ */
+describe('PublicNavigationView — T4.4 VA01 visible description', () => {
+  const withDescription = html({ state: ready(POPULATED) });
+
+  it('renders the description as its own visible element, not only in the title', () => {
+    expect(withDescription).toContain('class="link-card__description">A sample link</span>');
+    // The tooltip is the link's name alone now; it must not be the only place
+    // the description exists.
+    expect(withDescription).not.toContain('title="Example Domain — A sample link"');
+  });
+
+  it('gives the host its own right-hand column', () => {
+    expect(withDescription).toContain('class="destination-secondary link-card__host"');
+    expect(withDescription).toContain('example.com');
+  });
+
+  it('falls back to the host as the second line when there is no description', () => {
+    const markup = html({
+      state: ready({
+        site: SITE,
+        categories: [
+          {
+            id: 1,
+            name: 'Example',
+            icon: null,
+            sortOrder: 0,
+            links: [
+              { id: 1, title: 'No Description', url: 'https://example.com', description: null, iconUrl: null, sortOrder: 0 },
+            ],
+          },
+        ],
+      }),
+    });
+
+    // The second line carries the host…
+    expect(markup).toContain('class="destination-secondary">example.com</span>');
+    // …and the right-hand column is absent, so the host is not shown twice.
+    expect(markup).not.toContain('link-card__host');
+  });
+
+  it('keeps the description and the host in separate elements', () => {
+    // The two must not be collapsed into one node: the description is the
+    // secondary line and the host is the right-hand column.
+    expect(withDescription).toContain('link-card__description');
+    expect(withDescription).toContain('link-card__host');
+    expect(withDescription).not.toContain('class="link-card__description">example.com</span>');
   });
 });
 
@@ -633,5 +691,90 @@ describe('PublicNavigationView — UO2 management entries', () => {
       const markup = html({ session, settingsEntry: { onOpenSettings: vi.fn() } });
       expect(markup).not.toContain('个人设置');
     }
+  });
+});
+
+/**
+ * T4.6 — search highlighting.
+ *
+ * The mark is a projection of the same match the filter used, so these assert the
+ * three visible fields independently and that clearing the query leaves nothing
+ * behind. Filtering itself is covered by the navigation-search suite.
+ */
+describe('PublicNavigationView search highlight (T4.6)', () => {
+  const search = (query: string) => ({ query, onChange: vi.fn(), showNoResults: false });
+
+  /** The rendered text of one field, with the mark wrappers stripped. */
+  const fieldText = (markup: string, className: string): string => {
+    const inner = markup.match(new RegExp(`<span class="${className}">([\\s\\S]*?)</span>`))?.[1] ?? '';
+    return inner.replace(/<\/?mark>/g, '').replace(/<!-- -->/g, '');
+  };
+
+  it('marks the title match and preserves the rest of the name', () => {
+    const markup = html({ state: ready(POPULATED), branding: BRANDING, search: search('example') });
+
+    expect(markup).toContain('<mark>Example</mark> Domain');
+    expect(fieldText(markup, 'link-card__title')).toBe('Example Domain');
+  });
+
+  it('marks the description independently of the title', () => {
+    const markup = html({ state: ready(POPULATED), branding: BRANDING, search: search('sample') });
+
+    expect(markup).toContain('<mark>sample</mark>');
+    expect(markup).not.toContain('<mark>Example</mark>');
+    expect(fieldText(markup, 'link-card__description')).toBe('A sample link');
+  });
+
+  it('marks the host column without marking the name', () => {
+    const markup = html({ state: ready(POPULATED), branding: BRANDING, search: search('moz') });
+
+    expect(markup).toContain('developer.<mark>moz</mark>illa.org');
+    expect(fieldText(markup, 'link-card__title')).toBe('MDN Web Docs');
+  });
+
+  it('renders no mark at all when the query is empty', () => {
+    const markup = html({ state: ready(POPULATED), branding: BRANDING });
+
+    expect(markup).not.toContain('<mark>');
+  });
+});
+
+/**
+ * T4.6 review fix — the rendered mark follows the filter's Unicode semantics.
+ *
+ * The filter accepts `İstanbul` for query `i`; the mark must therefore appear,
+ * and it must cover the whole original character rather than a slice of it.
+ */
+describe('PublicNavigationView search highlight — Unicode (T4.6 review fix)', () => {
+  it('marks the original character for a query the filter accepts', () => {
+    const data: PublicNavigation = {
+      site: SITE,
+      categories: [
+        {
+          id: 9,
+          name: 'Unicode',
+          icon: null,
+          sortOrder: 0,
+          links: [
+            {
+              id: 90,
+              title: 'İstanbul',
+              url: 'https://istanbul.example',
+              description: null,
+              iconUrl: null,
+              sortOrder: 0,
+            },
+          ],
+        },
+      ],
+    };
+
+    const markup = html({
+      state: ready(data),
+      branding: BRANDING,
+      search: { query: 'i', onChange: vi.fn(), showNoResults: false },
+    });
+
+    expect(markup).toContain('<mark>İ</mark>stanbul');
   });
 });

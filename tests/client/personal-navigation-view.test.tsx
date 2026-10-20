@@ -115,7 +115,7 @@ function publicProps(overrides: Partial<PublicNavigationViewProps> = {}): Public
     personal: null,
     adminEntry: null,
     settingsEntry: null,
-    branding: { siteName: '导航', tagline: null, logoPath: null, faviconPath: null, primaryColor: null, pageBackgroundColor: null, surfaceColor: null, backgroundImagePath: null, defaultTheme: 'light', footerText: null },
+    branding: { siteName: '导航', tagline: null, logoPath: null, faviconPath: null, primaryColor: null, pageBackgroundColor: null, surfaceColor: null, backgroundImagePath: null, defaultTheme: 'light', footerText: null, homeThemeConfig: null },
     search: { query: '', onChange: vi.fn(), showNoResults: false },
     onLogout: vi.fn(),
     onShowLogin: vi.fn(),
@@ -769,4 +769,30 @@ describe('PersonalNavigationView — UO3 empty visibility', () => {
       }
     },
   );
+});
+
+/**
+ * T4.6 — search highlighting in the personal section.
+ *
+ * Same projection as the public directory; these only assert that the personal
+ * row's own two visible fields are marked and that an empty query marks nothing.
+ */
+describe('PersonalNavigationView search highlight (T4.6)', () => {
+  it('marks the matched part of a personal title', () => {
+    const markup = renderPersonal(PERSONAL, { searchQuery: 'supp' });
+
+    expect(markup).toContain('<mark>Supp</mark>lier');
+  });
+
+  it('marks the host line when the query matches the domain', () => {
+    const markup = renderPersonal(PERSONAL, { searchQuery: 'example' });
+
+    expect(markup).toContain('<mark>example</mark>.com');
+  });
+
+  it('renders no mark when the query is empty', () => {
+    const markup = renderPersonal(PERSONAL);
+
+    expect(markup).not.toContain('<mark>');
+  });
 });

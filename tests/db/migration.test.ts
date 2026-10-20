@@ -137,6 +137,8 @@ describe('initial migration', () => {
       'page_background_color',
       'surface_color',
       'background_image_path',
+      // UI-REDESIGN-v3.2 / T1: versioned, whitelisted home-page theme document.
+      'home_theme_config',
     ]);
 
     expect(tableInfo('public_categories').map((column) => column.name)).toEqual([
@@ -240,7 +242,10 @@ describe('BRP1.1 branding migration', () => {
 
       runMigrations(upgrade);
       const expectedSettings = { ...settingsBefore,
-        page_background_color: null, surface_color: null, background_image_path: null };
+        page_background_color: null, surface_color: null, background_image_path: null,
+        // T1: the home-theme document is added nullable, so a pre-existing row
+        // gains it as NULL — the "everything automatic" state.
+        home_theme_config: null };
       expect(upgrade.sqlite.prepare('SELECT * FROM site_settings').get()).toEqual(expectedSettings);
       expect(tables.map((table) => upgrade.sqlite.prepare(`SELECT * FROM ${table} ORDER BY id`).all())).toEqual(before);
       expect(upgrade.sqlite.pragma('foreign_key_check')).toEqual([]);
@@ -249,7 +254,7 @@ describe('BRP1.1 branding migration', () => {
       runMigrations(upgrade);
       expect(upgrade.sqlite.prepare('SELECT * FROM site_settings').get()).toEqual(expectedSettings);
       expect(tables.map((table) => upgrade.sqlite.prepare(`SELECT * FROM ${table} ORDER BY id`).all())).toEqual(before);
-      expect(upgrade.sqlite.prepare('SELECT * FROM __drizzle_migrations').all()).toHaveLength(4);
+      expect(upgrade.sqlite.prepare('SELECT * FROM __drizzle_migrations').all()).toHaveLength(5);
     } finally {
       upgrade.close();
     }

@@ -30,6 +30,12 @@ import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 
 import * as schema from '../db/schema.js';
 import { siteSettings } from '../db/schema.js';
+import {
+  parseStoredHomeThemeConfig,
+  serializeHomeThemeConfig,
+  validateHomeThemeConfig,
+  type StoredHomeThemeConfig,
+} from './home-theme-config.js';
 
 type Db = BetterSQLite3Database<typeof schema>;
 
@@ -63,6 +69,14 @@ export interface BrandingSettings {
   defaultTheme: DefaultTheme;
   footerText: string | null;
   accessMode: AccessMode;
+  /**
+   * Explicit home-page appearance overrides.
+   *
+   * `null` means "no explicit configuration" — every home-page colour then comes
+   * from the automatic contrast derivation, which is exactly the behaviour of a
+   * database that predates this column.
+   */
+  homeThemeConfig: StoredHomeThemeConfig | null;
 }
 
 /** The subset of branding that is public presentation data. */
@@ -81,6 +95,7 @@ export const DEFAULT_BRANDING: BrandingSettings = {
   defaultTheme: 'light',
   footerText: null,
   accessMode: 'public',
+  homeThemeConfig: null,
 };
 
 /** Repository-local development fallback for the uploads root. */
@@ -143,7 +158,20 @@ export function getBranding(db: Db): BrandingSettings {
     defaultTheme: row.defaultTheme,
     footerText: row.footerText,
     accessMode: row.accessMode,
+    // A malformed stored document surfaces as a BrandingError rather than a
+    // silent reset, so a corrupted column is visible instead of quietly
+    // reverting the administrator's saved appearance.
+    homeThemeConfig: readStoredHomeThemeConfig(row.homeThemeConfig),
   };
+}
+
+/** Parse a stored column, translating the contract's errors into BrandingError. */
+function readStoredHomeThemeConfig(raw: string | null): StoredHomeThemeConfig | null {
+  try {
+    return parseStoredHomeThemeConfig(raw);
+  } catch (error) {
+    throw new BrandingError('validation', error instanceof Error ? error.message : 'homeThemeConfig is invalid');
+  }
 }
 
 /** The public presentation subset. Deliberately omits `accessMode`. */
@@ -161,6 +189,10 @@ export function getPublicBranding(db: Db): PublicBranding {
     backgroundImagePath: branding.backgroundImagePath,
     defaultTheme: branding.defaultTheme,
     footerText: branding.footerText,
+    // Public presentation data: the home page needs these to render the saved
+    // appearance for every visitor, so the field belongs here rather than in an
+    // admin-only projection.
+    homeThemeConfig: branding.homeThemeConfig,
   };
 }
 
@@ -240,6 +272,25 @@ export function validateBrandColor(value: unknown, field: string): string | null
   return `#${trimmed.slice(1).toUpperCase()}`;
 }
 
+/**
+ * Validate a requested `homeThemeConfig` and serialize it for storage.
+ *
+ * `null` clears the column; anything else must survive the strict whitelist in
+ * `home-theme-config.ts`. Contract errors are re-thrown as `BrandingError` so the
+ * route layer can map them to a 400 without knowing about the inner contract.
+ */
+function serializeValidatedHomeThemeConfig(value: unknown): string | null {
+  if (value === null) {
+    return null;
+  }
+
+  try {
+    return serializeHomeThemeConfig(validateHomeThemeConfig(value));
+  } catch (error) {
+    throw new BrandingError('validation', error instanceof Error ? error.message : 'homeThemeConfig is invalid');
+  }
+}
+
 function requireDefaultTheme(value: unknown): DefaultTheme {
   if (value !== 'light' && value !== 'dark') {
     throw new BrandingError('validation', 'defaultTheme must be "light" or "dark"');
@@ -279,6 +330,14 @@ export function updateBranding(
     defaultTheme?: unknown;
     footerText?: unknown;
     accessMode?: unknown;
+    /**
+     * Explicit home-page appearance overrides.
+     *
+     * Follows the same tri-state convention as `pageBackgroundColor`:
+     * `undefined` leaves the stored document untouched, `null` clears it, and an
+     * object replaces it wholesale.
+     */
+    homeThemeConfig?: unknown;
   },
 ): BrandingSettings {
   const siteName = requireBoundedText(body.siteName, 'siteName', 100);
@@ -292,6 +351,12 @@ export function updateBranding(
       surfaceColor: validateBrandColor(body.surfaceColor, 'surfaceColor'),
     }),
   };
+  // Validated outside the transaction: rejecting a malformed document must not
+  // open a write transaction, and the value is immutable from here on.
+  const homeThemeOverride =
+    body.homeThemeConfig === undefined
+      ? {}
+      : { homeThemeConfig: serializeValidatedHomeThemeConfig(body.homeThemeConfig) };
   const defaultTheme = requireDefaultTheme(body.defaultTheme);
   const footerText = optionalBoundedText(body.footerText, 'footerText', 500);
   const accessMode = requireAccessMode(body.accessMode);
@@ -301,11 +366,11 @@ export function updateBranding(
 
     if (existing === undefined) {
       tx.insert(siteSettings)
-        .values({ siteName, tagline, primaryColor, ...colorOverrides, defaultTheme, footerText, accessMode })
+        .values({ siteName, tagline, primaryColor, ...colorOverrides, ...homeThemeOverride, defaultTheme, footerText, accessMode })
         .run();
     } else {
       tx.update(siteSettings)
-        .set({ siteName, tagline, primaryColor, ...colorOverrides, defaultTheme, footerText, accessMode, updatedAt: new Date() })
+        .set({ siteName, tagline, primaryColor, ...colorOverrides, ...homeThemeOverride, defaultTheme, footerText, accessMode, updatedAt: new Date() })
         .where(eq(siteSettings.id, existing.id))
         .run();
     }
@@ -325,8 +390,26 @@ function setAssetPath(db: Db, column: 'logoPath' | 'faviconPath' | 'backgroundIm
     const existing = loadRow(tx as unknown as Db);
 
     if (existing === undefined) {
+      // `DEFAULT_BRANDING` is the application-level shape (its `homeThemeConfig`
+      // is already a parsed object), so it cannot be spread straight into a
+      // column insert. The stored home-theme column is `NULL` here, which is the
+      // correct "everything automatic" starting point.
       tx.insert(siteSettings)
-        .values({ ...DEFAULT_BRANDING, [column]: value })
+        .values({
+          siteName: DEFAULT_BRANDING.siteName,
+          tagline: DEFAULT_BRANDING.tagline,
+          logoPath: DEFAULT_BRANDING.logoPath,
+          faviconPath: DEFAULT_BRANDING.faviconPath,
+          primaryColor: DEFAULT_BRANDING.primaryColor,
+          pageBackgroundColor: DEFAULT_BRANDING.pageBackgroundColor,
+          surfaceColor: DEFAULT_BRANDING.surfaceColor,
+          backgroundImagePath: DEFAULT_BRANDING.backgroundImagePath,
+          defaultTheme: DEFAULT_BRANDING.defaultTheme,
+          footerText: DEFAULT_BRANDING.footerText,
+          accessMode: DEFAULT_BRANDING.accessMode,
+          homeThemeConfig: null,
+          [column]: value,
+        })
         .run();
     } else {
       tx.update(siteSettings)

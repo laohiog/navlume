@@ -21,7 +21,7 @@ import {
   type QuickAddIntent,
 } from './quick-add.js';
 import { filterCategoriesByQuery } from './navigation-search.js';
-import { CategoryNavigation, DestinationIcon, DestinationHost } from './PublicNavigation.js';
+import { CategoryNavigation, DestinationIcon, DestinationHost, SearchHighlight } from './PublicNavigation.js';
 
 /**
  * Render state for the authenticated personal section.
@@ -449,6 +449,7 @@ function LinkForm({
 function PersonalLinkRow({
   linkMove,
   link,
+  query,
   owningCategoryId,
   index,
   total,
@@ -465,6 +466,8 @@ function PersonalLinkRow({
 }: {
   link: PersonalLink;
   linkMove: LinkMoveControls;
+  /** Active search query; only wraps matches in `<mark>`, never filters here. */
+  query: string;
   owningCategoryId: number;
   index: number;
   total: number;
@@ -491,8 +494,12 @@ function PersonalLinkRow({
         >
           <DestinationIcon title={link.title} iconUrl={link.iconUrl} />
           <span className="destination-copy">
-            <span className="personal-link__title">{link.title}</span>
-            <span className="personal-link__description"><DestinationHost url={link.normalizedUrl} /></span>
+            <span className="personal-link__title">
+              <SearchHighlight text={link.title} query={query} />
+            </span>
+            <span className="personal-link__description">
+              <DestinationHost url={link.normalizedUrl} query={query} />
+            </span>
           </span>
         </a>
         {isOrganizing ? <div className="personal-link__controls">
@@ -551,6 +558,7 @@ function PersonalLinkRow({
 function PersonalCategorySection({
   linkMove,
   category,
+  query,
   index,
   total,
   allCategories,
@@ -578,6 +586,8 @@ function PersonalCategorySection({
   onMoveLink,
 }: {
   category: PersonalCategory;
+  /** Active search query, passed down for match highlighting only. */
+  query: string;
   linkMove: LinkMoveControls;
   index: number;
   total: number;
@@ -650,10 +660,30 @@ function PersonalCategorySection({
   }, [inlineAddSavedTitle]);
 
   return (
-    <section className="personal-category" aria-labelledby={headingId}>
+    <section
+      /*
+       * T4.4 (Beacon A): the default category — the user's `⭐ 我的常用` — is the
+       * page's highest-traffic panel and is marked `personal-category--elevated`
+       * so it can carry the brand-tinted background that separates it from the
+       * user's other categories at a glance.
+       *
+       * Presentation only. `isDefault` is server data that already decides
+       * whether this category may be renamed or deleted, and styling it does not
+       * change any of that.
+       */
+      className={category.isDefault ? 'personal-category personal-category--elevated' : 'personal-category'}
+      aria-labelledby={headingId}
+    >
       <div className="personal-category__header">
         <h3 className="personal-category__title" id={headingId} tabIndex={-1} data-home-category="personal">
-          {category.name}
+          {/*
+            B2: the count sits beside the name inside the panel's heading slot.
+            It is taken from the array rendered just below, so it cannot drift,
+            and it is `aria-hidden` because the heading's accessible name is the
+            panel's label.
+          */}
+          <span className="category__name">{category.name}</span>
+          <span className="category__count" aria-hidden="true">{category.links.length}</span>
         </h3>
         <div className="personal-category__controls">
           {/*
@@ -733,6 +763,7 @@ function PersonalCategorySection({
               linkMove={linkMove}
               key={link.id}
               link={link}
+              query={query}
               owningCategoryId={category.id}
               index={fullLinks.findIndex((item) => item.id === link.id)}
               total={fullLinks.length}
@@ -1211,6 +1242,7 @@ export function PersonalNavigationView({
           linkMove={{ activeId: movingLinkId, open: (id) => { closeForms(); setMovingLinkId(id); }, submit: actions.moveLinkTo }}
           key={category.id}
           category={category}
+          query={searchQuery}
           // Ordering controls must reflect the real category order, not the
           // filtered view, so a search never disables at the wrong boundary or
           // swaps against the wrong neighbour.

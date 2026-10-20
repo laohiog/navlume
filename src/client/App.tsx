@@ -18,6 +18,7 @@ import { authClient } from './api/auth-client.js';
 import { fetchPublicNavigation, type PublicNavigationSite } from './api/public-navigation.js';
 import { mutationErrorMessage } from './personal-error.js';
 import { countMatchingLinks, normalizeSearchQuery } from './navigation-search.js';
+import { isEditableTarget } from './quick-add.js';
 import {
   createAdminPublicCategory,
   createAdminPublicLink,
@@ -52,10 +53,19 @@ import {
   type BrandingMutationOutcome,
   type PublicBranding,
 } from './api/admin-branding.js';
-import { BRANDING_THEME_PROPERTIES, brandingThemeProperties } from './branding-theme.js';
+import {
+  BRANDING_THEME_PROPERTIES,
+  HOME_THEME_COLOR_VARIABLE_NAMES,
+  HOME_THEME_GATE_NAMES,
+  brandingThemeProperties,
+  homeThemeOverrideGates,
+  homeThemeOverrides,
+} from './branding-theme.js';
+import { HOME_THEME_BASIS_ATTRIBUTE, HOME_THEME_PRESET_ATTRIBUTE } from './home-theme-presets.js';
 import {
   AdminBrandingView,
   type AdminBrandingActions,
+  type UnsavedChangesGuard,
   type AdminBrandingState,
 } from './AdminBranding.js';
 import {
@@ -223,6 +233,19 @@ export function App({ initialLogin = false }: { initialLogin?: boolean } = {}) {
   const [adminBrandingToken, setAdminBrandingToken] = useState(0);
   const [isBrandingMutating, setIsBrandingMutating] = useState(false);
   const [brandingMutationError, setBrandingMutationError] = useState<string | null>(null);
+  /*
+   * Guard registered by the branding view while it holds unsaved changes.
+   *
+   * Kept in a ref so the admin page can call it without depending on identity,
+   * and so registering it does not re-render the surrounding page. It is the one
+   * channel between "a module owns a draft" and "the page that unmounts it" —
+   * the alternative, hoisting the draft itself into App, would move colour state
+   * well away from the form that owns it.
+   */
+  const brandingUnsavedGuardRef = useRef<UnsavedChangesGuard | null>(null);
+  const setBrandingUnsavedGuard = useCallback((guard: UnsavedChangesGuard | null) => {
+    brandingUnsavedGuardRef.current = guard;
+  }, []);
 
   /**
    * Protected Admin user-management state (P5.3).
@@ -498,6 +521,56 @@ export function App({ initialLogin = false }: { initialLogin?: boolean } = {}) {
     };
   }, [isAuthenticated]);
 
+  /**
+   * `/` focuses the existing search field.
+   *
+   * A convenience, never the only way in — the field stays visible and usable.
+   * It is ignored while typing (`isEditableTarget` keeps `/` a literal character
+   * in any input, textarea or contenteditable), while a modal is open, and during
+   * IME composition, where `/` belongs to the input method rather than the page.
+   *
+   * `Ctrl/⌘+K` rides the same path but cannot be promised: a browser that
+   * reserves the combination never delivers the event, and this handler simply
+   * never runs. `/` is the shortcut that is actually guaranteed.
+   */
+  useEffect(() => {
+    const handleShortcut = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.repeat || event.isComposing) {
+        return;
+      }
+
+      const isSlash = event.key === '/';
+      const isCommandK = (event.ctrlKey || event.metaKey) && !event.altKey
+        && event.key.toLowerCase() === 'k';
+
+      if (!isSlash && !isCommandK) {
+        return;
+      }
+
+      // A modified `/` belongs to the browser or the OS, not to this page.
+      if (isSlash && (event.ctrlKey || event.metaKey || event.altKey)) {
+        return;
+      }
+
+      if (isEditableTarget(event.target) || document.querySelector('dialog[open]') !== null) {
+        return;
+      }
+
+      const input = document.querySelector<HTMLInputElement>('input.search__input');
+      if (input === null || input.disabled || input.getClientRects().length === 0) {
+        return;
+      }
+
+      event.preventDefault();
+      input.focus();
+    };
+
+    window.addEventListener('keydown', handleShortcut);
+    return () => {
+      window.removeEventListener('keydown', handleShortcut);
+    };
+  }, []);
+
   // Admin public-navigation state: only ever requested for an admin session.
   useEffect(() => {
     if (!isAdmin) {
@@ -576,6 +649,78 @@ export function App({ initialLogin = false }: { initialLogin?: boolean } = {}) {
       if (value === undefined) root.style.removeProperty(name);
       else root.style.setProperty(name, value);
     }
+
+    /*
+     * Home-page colour overrides.
+     *
+     * Applied to `.app--home` rather than the root element on purpose: the
+     * defaults for these properties are declared on `.app--home` itself, so
+     * writing them anywhere else would be shadowed by that declaration. The
+     * effect also flips `data-home-overrides`, which is what lets the stylesheet
+     * escalate specificity past the `:root[data-brand-colors='true']` brand
+     * rules without relying on declaration order alone.
+     *
+     * **Only while the real home page is the active view (T4.3.1).** The admin
+     * branding page mounts its own `.app--home` — the draft preview — and owns
+     * that element's values, and the root's gates, itself (see
+     * `AdminBrandingView`'s gate effect). Writing the *saved* values here on
+     * every refetch reached straight through to the preview: measured,
+     * uploading a favicon flipped the preview's gate to the saved `false` and
+     * stripped its inline draft colour, so the miniature stopped showing a
+     * draft the form was still holding. Two owners for one element is the
+     * defect — the app manages the real page, the preview manages itself, and
+     * the two are never mounted at the same time.
+     */
+    if (homePageActive) {
+      const homeOverrides = homeThemeOverrides(publicBranding.homeThemeConfig);
+      for (const name of HOME_THEME_COLOR_VARIABLE_NAMES) {
+        root.style.removeProperty(name);
+      }
+      // Per-slot gates, cleared before being re-set. A single shared flag would
+      // switch on every rule together and re-declare untouched slots with their
+      // defaults, which is exactly the partial-override regression T1.1 fixes.
+      for (const gate of HOME_THEME_GATE_NAMES) {
+        root.dataset[gate] = 'false';
+      }
+      for (const gate of homeThemeOverrideGates(homeOverrides)) {
+        root.dataset[gate] = 'true';
+      }
+      /*
+       * Theme preset shape.
+       *
+       * Written onto each `.app--home` element, not onto `<html>`.
+       *
+       * T3 mirrored it on the root so the shape would survive navigation without
+       * per-mount bookkeeping. T3.1 showed that is exactly what makes an unsaved
+       * draft unpreviewable: `<html data-theme>` is the *saved* basis, so its
+       * dark-variant rule outranked anything the preview could declare, and the
+       * miniature showed light shadows over dark colours. Gating on the element
+       * that is actually styled removes the conflict — and the effect already
+       * re-runs on navigation (`homePageActive` is in its dependency list) and
+       * already writes the seven `--home-*` values the same way, so this adds no
+       * new lifecycle to keep in sync.
+       *
+       * Removed rather than blanked when no preset is stored: an older site with
+       * no `presetId` must keep rendering exactly as it did before T3.
+       */
+      const presetId = publicBranding.homeThemeConfig?.presetId;
+      const basis = publicBranding.defaultTheme === 'dark' ? 'dark' : 'light';
+      for (const home of Array.from(document.querySelectorAll<HTMLElement>('.app--home'))) {
+        for (const name of HOME_THEME_COLOR_VARIABLE_NAMES) {
+          home.style.removeProperty(name);
+        }
+        for (const [name, value] of Object.entries(homeOverrides)) {
+          home.style.setProperty(name, value);
+        }
+        if (presetId === undefined) {
+          home.removeAttribute(HOME_THEME_PRESET_ATTRIBUTE);
+        } else {
+          home.setAttribute(HOME_THEME_PRESET_ATTRIBUTE, presetId);
+        }
+        home.setAttribute(HOME_THEME_BASIS_ATTRIBUTE, basis);
+      }
+    }
+
     root.dataset['brandColors'] = String(publicBranding.primaryColor !== null || publicBranding.pageBackgroundColor !== null || publicBranding.surfaceColor !== null);
     root.dataset['brandImage'] = String(homePageActive && properties['--brand-background-image'] !== undefined);
 
@@ -1514,7 +1659,15 @@ export function App({ initialLogin = false }: { initialLogin?: boolean } = {}) {
 
         <main className="content" id="main-content" tabIndex={-1}>
           <AdminManagementView
+            // Guarded here rather than at the navigation call: this component owns
+            // every exit from a module, navigation row and "返回导航" alike.
+            confirmLeave={() => brandingUnsavedGuardRef.current?.() ?? Promise.resolve(true)}
             onBackToHome={() => navigate('home')}
+            // At sidebar widths the shell hides the shared header, so it carries
+            // the same identity and session controls itself.
+            siteBranding={publicBranding}
+            username={session.username ?? ''}
+            onLogout={() => { void handleLogout(); }}
             publicNavigation={
               <AdminPublicNavigationView
                 state={adminState}
@@ -1529,6 +1682,7 @@ export function App({ initialLogin = false }: { initialLogin?: boolean } = {}) {
                 actions={adminBrandingActions}
                 isMutating={isBrandingMutating}
                 errorMessage={brandingMutationError}
+                onUnsavedGuard={setBrandingUnsavedGuard}
               />
             }
             users={

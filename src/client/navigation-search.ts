@@ -119,3 +119,144 @@ export function countMatchingLinks(
 
   return total;
 }
+
+/** One run of text: either a literal match, or the text between matches. */
+export interface HighlightSegment {
+  text: string;
+  hit: boolean;
+}
+
+/**
+ * Where one original character lands in `text.toLowerCase()`.
+ *
+ * `from`/`to` are UTF-16 indices into the original text; `lowerFrom`/`lowerTo`
+ * are indices into its lower-cased form. They differ because lower-casing is not
+ * length-preserving: `İ` (U+0130) becomes `i` + a combining dot.
+ */
+interface LowerCaseRun {
+  from: number;
+  to: number;
+  lowerFrom: number;
+  lowerTo: number;
+}
+
+/**
+ * Map every original character to its range in the lower-cased text.
+ *
+ * JavaScript applies only the non-locale case mappings, whose length effects are
+ * per-character (the one unconditional expansion is U+0130), so summing the
+ * per-character lengths reproduces the whole-string length. Only lengths are read
+ * here; the string itself is still lower-cased as a whole, because that is
+ * exactly what the filter does.
+ */
+function lowerCaseRuns(text: string): { runs: LowerCaseRun[]; lowered: string } {
+  const runs: LowerCaseRun[] = [];
+  let from = 0;
+  let lowerFrom = 0;
+
+  for (const character of text) {
+    const to = from + character.length;
+    const lowerTo = lowerFrom + character.toLowerCase().length;
+    runs.push({ from, to, lowerFrom, lowerTo });
+    from = to;
+    lowerFrom = lowerTo;
+  }
+
+  return { runs, lowered: text.toLowerCase() };
+}
+
+/**
+ * Split `text` into alternating plain and matching runs, for `<mark>` rendering.
+ *
+ * A **view projection only**: it never filters, ranks, or rewrites anything, and
+ * concatenating the returned segments always reproduces `text` exactly.
+ *
+ * Matching runs on `text.toLowerCase()` — the exact expression `linkMatchesQuery`
+ * uses — so "the filter kept this row" and "the field is marked" cannot disagree.
+ * A case-insensitive regular expression over the original string cannot promise
+ * that: `/i/i` does not match `İ`, and `/k/i` does not match `K`, while
+ * `toLowerCase()` matches both. The price is that a hit index is only valid in
+ * the lower-cased string, so it is mapped back through `lowerCaseRuns` and a mark
+ * always covers whole original characters — a character that expands into two
+ * lower-cased code points is highlighted in full rather than sliced in half.
+ *
+ * An empty (or whitespace-only) query yields a single non-matching segment, so
+ * callers render highlighted and plain text through one code path and no stale
+ * mark survives clearing the search.
+ */
+export function splitHighlight(text: string, query: string): HighlightSegment[] {
+  const normalizedQuery = normalizeSearchQuery(query);
+
+  if (text.length === 0) {
+    return [];
+  }
+
+  if (normalizedQuery.length === 0) {
+    return [{ text, hit: false }];
+  }
+
+  const { runs, lowered } = lowerCaseRuns(text);
+  const segments: HighlightSegment[] = [];
+  let lowerCursor = 0;
+  let originalCursor = 0;
+  let matched = false;
+
+  while (lowerCursor < lowered.length) {
+    const hitStart = lowered.indexOf(normalizedQuery, lowerCursor);
+
+    if (hitStart < 0) {
+      break;
+    }
+
+    const hitEnd = hitStart + normalizedQuery.length;
+
+    // Every original character whose lower-cased range overlaps the hit.
+    let firstRun = -1;
+    let lastRun = -1;
+
+    for (let index = 0; index < runs.length; index += 1) {
+      const run = runs[index];
+
+      if (run.lowerTo <= hitStart) {
+        continue;
+      }
+      if (run.lowerFrom >= hitEnd) {
+        break;
+      }
+      if (firstRun < 0) {
+        firstRun = index;
+      }
+      lastRun = index;
+    }
+
+    // A hit outside the table means the two lower-casings disagreed in length;
+    // marking nothing is better than slicing the wrong characters.
+    if (firstRun < 0) {
+      break;
+    }
+
+    const start = runs[firstRun].from;
+    const end = runs[lastRun].to;
+
+    if (start > originalCursor) {
+      segments.push({ text: text.slice(originalCursor, start), hit: false });
+    }
+
+    segments.push({ text: text.slice(start, end), hit: true });
+    originalCursor = end;
+    // Never re-scan text already covered by this mark, and step past the whole
+    // lower-cased range of the last consumed character so hits cannot overlap.
+    lowerCursor = Math.max(hitEnd, runs[lastRun].lowerTo);
+    matched = true;
+  }
+
+  if (!matched) {
+    return [{ text, hit: false }];
+  }
+
+  if (originalCursor < text.length) {
+    segments.push({ text: text.slice(originalCursor), hit: false });
+  }
+
+  return segments;
+}

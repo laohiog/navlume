@@ -44,6 +44,7 @@ import {
 } from '../db/schema.js';
 import { validateLinkUrl } from './url.js';
 import { BrandingError, validateBrandColor } from './branding.js';
+import { parseStoredHomeThemeConfig, serializeHomeThemeConfig } from './home-theme-config.js';
 
 type Db = BetterSQLite3Database<typeof schema>;
 
@@ -74,6 +75,15 @@ export interface SiteExportDocument {
     default_theme: 'light' | 'dark';
     footer_text: string | null;
     access_mode: 'public' | 'login_required';
+    /**
+     * Explicit home-page appearance overrides, as the same JSON document the
+     * settings table stores.
+     *
+     * Optional so that documents exported before this field existed remain
+     * importable without modification. Absent means "no explicit configuration",
+     * which is exactly what `null` means on the column.
+     */
+    home_theme_config?: string | null;
   };
   public_categories: {
     source_id: number;
@@ -118,6 +128,7 @@ interface ValidatedSite {
   siteSettings: SiteExportDocument['site_settings'] & {
     page_background_color: string | null;
     surface_color: string | null;
+    home_theme_config: string | null;
   };
   categories: { sourceId: number; name: string; icon: string | null; isVisible: boolean }[];
   links: {
@@ -282,6 +293,31 @@ function requireTheme(value: unknown): 'light' | 'dark' {
   return value;
 }
 
+/**
+ * Validate the optional `home_theme_config` document and return it normalized.
+ *
+ * The document is re-serialized through the authoritative validator rather than
+ * passed through verbatim, so an imported file is stored in exactly the same
+ * canonical form the settings API would have produced.
+ */
+function requireHomeThemeConfig(value: unknown): string | null {
+  if (value === undefined || value === null) {
+    return null;
+  }
+
+  if (typeof value !== 'string') {
+    throw new DataPortabilityError('home_theme_config must be a JSON string');
+  }
+
+  try {
+    return serializeHomeThemeConfig(parseStoredHomeThemeConfig(value));
+  } catch (error) {
+    throw new DataPortabilityError(
+      error instanceof Error ? error.message : 'home_theme_config is invalid',
+    );
+  }
+}
+
 function requireAccessMode(value: unknown): 'public' | 'login_required' {
   if (value !== 'public' && value !== 'login_required') {
     throw new DataPortabilityError('access_mode must be "public" or "login_required"');
@@ -330,6 +366,12 @@ export function validateSiteDocument(raw: unknown): ValidatedSite {
     default_theme: requireTheme(settings['default_theme']),
     footer_text: optionalString(settings['footer_text'], 'footer_text', 500),
     access_mode: requireAccessMode(settings['access_mode']),
+    // Absent (documents exported before this field existed) is treated the same
+    // as an explicit null: no home-page overrides, everything automatic. A
+    // document that *does* carry the field must still satisfy the same strict
+    // whitelist the settings API enforces, so an import can never introduce a
+    // document the editor could not have produced.
+    home_theme_config: requireHomeThemeConfig(settings['home_theme_config']),
   };
 
   const rawCategories = requireArray(doc['public_categories'], 'public_categories');
@@ -583,6 +625,10 @@ export function exportSiteData(db: Db): SiteExportDocument {
       default_theme: site?.defaultTheme ?? 'light',
       footer_text: site?.footerText ?? null,
       access_mode: site?.accessMode ?? 'public',
+      // Exported as the same JSON string the column holds, so an
+      // export→import→export round trip is byte-identical. A row that predates
+      // the column exports `null`, which imports back as "everything automatic".
+      home_theme_config: site?.homeThemeConfig ?? null,
     },
     public_categories: categories.map((category) => ({
       source_id: category.id,
@@ -752,6 +798,7 @@ export function applySiteImport(db: Db, raw: unknown): SiteImportPreview {
       defaultTheme: validated.siteSettings.default_theme,
       footerText: validated.siteSettings.footer_text,
       accessMode: validated.siteSettings.access_mode,
+      homeThemeConfig: validated.siteSettings.home_theme_config,
     };
 
     if (existing === undefined) {

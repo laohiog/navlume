@@ -16,13 +16,50 @@
  * stays a cross-reference, so it resolves to a light surface for contrast
  * against the brand fill.
  */
+/*
+ * The two bases are declared on **any element carrying `data-theme`**, not only
+ * on `:root`.
+ *
+ * On the real site only `<html>` has `data-theme`, so this changes nothing there.
+ * It exists for one consumer: the branding form's home-theme preview, which is a
+ * small box that must render the *draft's* basis while the page around it stays
+ * on the saved one. T3.1 measured what happens otherwise — with the saved basis
+ * light and the draft dark, the preview's `--surface`, `--shadow-soft` and
+ * `color-scheme` all came from `<html>` and the miniature showed light-theme
+ * shadows over dark-theme colours.
+ *
+ * Making the blocks element-scoped keeps a single definition of each token: the
+ * preview resolves the *same* declarations the site does, rather than a
+ * hand-written dark copy that could drift. Overriding the site's own `data-theme`
+ * instead was not an option — it restyles the whole admin, which is exactly what
+ * the brief forbids.
+ *
+ * Note the selector keeps `:root` as well: an element with no `data-theme` at all
+ * must still start from the light values, and `<html>` must keep them if the
+ * attribute is somehow absent.
+ */
 :root,
-:root[data-theme='light'] {
+[data-theme='light'] {
   --surface: #f5f7fa;
   --surface-raised: #ffffff;
   --surface-sunken: #e8edf3;
   --surface-muted: #eef2f6;
   --brand-tint: color-mix(in srgb, var(--brand-primary) 7%, var(--surface-raised));
+  /*
+   * T4.4 (Beacon A): the elevated panel tint behind 我的常用.
+   *
+   * Same derivation as `--brand-tint` — brand primary mixed into the raised
+   * surface — at double the weight, so it stays a *tint* of the administrator's
+   * own brand colour instead of a second palette. Because it is composed from
+   * `var(--brand-primary)`, it re-resolves automatically when the branding
+   * engine writes that property at runtime; nothing here is a hard-coded brand
+   * value and no contrast has to be maintained by hand.
+   *
+   * Not declared on `:root` in T4.4's stead because this is a **home-only**
+   * surface: the sole consumer is the elevated personal-category panel, which is
+   * always inside `.app--home`. See the T4.4 block below for the consumer.
+   */
+  --brand-tint-strong: color-mix(in srgb, var(--brand-primary) 16%, var(--surface-raised));
   --text: #202b38;
   --text-muted: #566374;
   --text-subtle: #657387;
@@ -36,12 +73,17 @@
   color-scheme: light;
 }
 
-:root[data-theme='dark'] {
+[data-theme='dark'] {
   --surface: #161c25;
   --surface-raised: #202936;
   --surface-sunken: #263140;
   --surface-muted: #2a3544;
   --brand-tint: color-mix(in srgb, var(--brand-primary) 7%, var(--surface-raised));
+  /* T4.4: same derivation as light, so the elevated panel follows the brand in
+     both themes. Declared here rather than inherited because `:root` and
+     `[data-theme='light']` are one selector list and the dark block redeclares
+     the other surface tokens it needs. */
+  --brand-tint-strong: color-mix(in srgb, var(--brand-primary) 16%, var(--surface-raised));
   --text: #edf2f8;
   --text-muted: #b3c0d0;
   --text-subtle: #a4b2c4;
@@ -676,6 +718,32 @@ textarea::placeholder {
   border-color: var(--brand-primary);
 }
 
+/*
+ * Search hits inside a result row.
+ *
+ * Scoped to the two link lists so `<mark>` elsewhere keeps its browser default —
+ * this is a result highlight, not a global text style.
+ *
+ * The tint is laid **over** whatever the row already sits on rather than being a
+ * fixed surface colour. A fixed `--brand-tint-strong` background is exactly the
+ * colour of the elevated "我的常用" panel, so on those tiles the mark rendered as
+ * an invisible patch (measured: mark and panel both `color(srgb .865 .897 .885)`).
+ * A translucent brand wash always lands one step darker than its own backdrop,
+ * on the white directory, the tinted elevated panel, and in dark mode alike.
+ *
+ * Text colour is inherited: the row's ink is derived for the surface behind it,
+ * so re-declaring a colour here is how a highlight ends up unreadable under a
+ * custom brand. Weight and size are untouched, because the directory row is
+ * pinned at 52px and a heavier glyph would reflow every row after it.
+ */
+.link-card mark,
+.personal-link mark {
+  background-color: color-mix(in srgb, var(--brand-primary) 22%, transparent);
+  color: inherit;
+  border-radius: 0.2em;
+  padding: 0 0.08em;
+}
+
 /* -------------------------------------------------------------------------- */
 /* Admin public navigation (admins only)                                       */
 /* -------------------------------------------------------------------------- */
@@ -791,12 +859,45 @@ textarea::placeholder {
   outline-offset: 2px;
 }
 
+/*
+ * A category is a drawer: a labelled band on top, ruled entries below, and its
+ * own action strip at the bottom.
+ *
+ * The margin is deliberately several times the gap between two entries — a
+ * category boundary has to be readable while scrolling, and at 1rem (the old
+ * value) it was the same order of magnitude as the rules inside a drawer, so the
+ * eye ran straight from one category's last link into the next one's first.
+ */
 .admin-category {
-  margin-bottom: 1rem;
+  margin-bottom: 1.5rem;
   padding: 0;
   border: 1px solid var(--border);
   border-radius: 0.5rem;
   background-color: var(--surface-raised);
+
+  /*
+   * The drawer's bookend tone, declared once and used by both the header and the
+   * footer strip so the two read as one decision.
+   *
+   * Mixed from `--text` rather than taken from `--surface-muted`, and that is
+   * deliberate. Inside `.admin-category` the surface tokens are remapped to
+   * `--brand-surface-*`, and for a site whose panel colour is white the runtime
+   * derives `--brand-surface-muted-fill` as **white on white** — it comes out
+   * exactly equal to the panel, so a band painted with it disappears on the very
+   * sites that most need the boundary. Mixing against `--surface-raised` cannot
+   * collapse that way: the step is a proportion of the panel's own ink, so it
+   * stays distinct and it follows the panel into dark themes on its own.
+   *
+   * 8% is not a guess: `--surface-muted` (light) measures #EEF2F6, and this lands
+   * within a point or two of it — the tone B2 already uses for "a step away from
+   * the panel", so the drawer sits in the existing palette instead of inventing
+   * one. 5% was tried first and measured #F4F5F5, which reads as nothing at all;
+   * that is the whole problem this band exists to solve.
+   *
+   * Fixing the derivation itself is out of scope here (it is T1 code, and it would
+   * change every surface on the site); this is the local answer to it.
+   */
+  --admin-drawer-band: color-mix(in srgb, var(--text) 8%, var(--surface-raised));
 }
 
 /* Hidden rows are visually distinct so an admin can spot them immediately. */
@@ -806,20 +907,62 @@ textarea::placeholder {
   background-color: var(--surface-muted);
 }
 
+/*
+ * The band.
+ *
+ * A tone step, not a shadow and not a thicker border — the brief asks for
+ * restraint, and a surface change says "this is a different kind of thing"
+ * without adding a single pixel of decoration. It is also what makes a category
+ * recognisable from the far end of a 120-entry list.
+ *
+ * The tone comes from `--admin-drawer-band` on the panel, so header and footer
+ * match by construction. `border-radius: inherit` rather than a literal: the
+ * panel's radius is set once on `.app--admin .admin-category`, and hardcoding it
+ * here would be a second place to forget when that scale changes.
+ */
 .admin-category__header {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: 0.5rem 0.9rem;
   align-items: center;
-  padding: 0.4rem 1rem;
+  padding: 0.7rem 1.125rem;
   margin-bottom: 0;
   border-bottom: 1px solid var(--border);
+  background-color: var(--admin-drawer-band);
+  border-radius: inherit;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.admin-category__identity {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.3rem 0.6rem;
+  min-width: 0;
 }
 
 .admin-category__title {
-  font-size: 1rem;
+  font-size: 1.1rem;
+  line-height: 1.35;
   margin: 0;
   overflow-wrap: anywhere;
+  min-width: 0;
+}
+
+/*
+ * The count.
+ *
+ * Without it the size of a category is only knowable by counting rows, which is
+ * the thing an admin does least often and most expensively. `--text-muted` rather
+ * than `--text-subtle`: this sits on the muted band, and B2 measured the subtle
+ * token below 4.5:1 on pale brand surfaces at small sizes.
+ */
+.admin-category__count {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .admin-category__controls {
@@ -852,6 +995,52 @@ textarea::placeholder {
   border: 0;
   border-bottom: 1px solid var(--border);
   border-radius: 0;
+}
+
+/*
+ * The list stops here.
+ *
+ * The last entry used to draw its own bottom rule, and then the panel left 53px
+ * of empty white below it before the border — which reads as more rows, not as
+ * the end of them. The footer's top rule is the single line that closes the
+ * drawer, so it must not be doubled.
+ */
+.admin-link:last-child {
+  border-bottom: 0;
+}
+
+/*
+ * A hidden link row was **never** actually dashed.
+ *
+ * `.admin-link` sets `border: 0` and is declared *after* `.admin-link--hidden`,
+ * at equal specificity — so the hidden rule's `border-style: dashed` was reset to
+ * `none` and only the muted background survived. Found while measuring AC5: the
+ * computed `border-top-style` on a hidden row came back `none`. Categories were
+ * unaffected (nothing resets their border), which is why it went unnoticed.
+ *
+ * Written with both classes so specificity wins rather than relying on position,
+ * and scoped to the one edge that exists — this is a fix to the state
+ * presentation, not a change to any visibility behaviour.
+ */
+.admin-link.admin-link--hidden {
+  border-bottom-style: dashed;
+}
+
+/*
+ * A category's own action strip, below its entries.
+ *
+ * This is what 「新增网址」 was missing. Sitting inside the list with the same left
+ * alignment as every entry above it, it read as one more item; here it reads as
+ * what it is — the thing you do to this drawer.
+ */
+.admin-category__footer {
+  padding: 0.5rem 1.125rem;
+  border-top: 1px solid var(--border);
+  /* Same tone as the header: the drawer is bookended, not just capped. */
+  background-color: var(--admin-drawer-band);
+  border-radius: inherit;
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
 }
 
 .admin-link__main {
@@ -887,6 +1076,112 @@ textarea::placeholder {
   display: flex;
   flex-wrap: wrap;
   gap: 0.1rem;
+  align-items: center;
+}
+
+/*
+ * T4.2 — the row's overflow panel.
+ *
+ * Deliberately **inline in the row, not a floating popover**. Three reasons, all
+ * of them ones this project has already settled:
+ *
+ *  - `.link-move__panel`, the disclosure sitting directly beside it in the very
+ *    same row, works exactly this way. Two different disclosure behaviours in one
+ *    row is the kind of inconsistency administrators notice immediately.
+ *  - inline means it cannot be clipped by an ancestor or run off a 375px viewport,
+ *    which is the failure mode a floating menu has to be engineered against;
+ *  - it needs no positioning script, no scroll/resize listeners and no new browser
+ *    capability, so Escape and focus return are the two behaviours this page has
+ *    already implemented and tested rather than two new ones to get right.
+ *
+ * It spans the row's full width (`grid-column: 1 / -1`), so its items sit directly
+ * under the controls that opened them.
+ */
+.admin-row-menu {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.35rem;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  /* The drawer band, one step softer: this is a transient surface inside a row,
+     not a second header. */
+  background: color-mix(in srgb, var(--text) 4%, var(--surface-raised));
+  min-width: 0;
+}
+
+/*
+ * `LinkMove` renders `display: contents`, so its panel becomes a grid item of the
+ * row and needs the same span as the menu it now sits inside.
+ */
+.admin-row-menu .link-move__form {
+  margin: 0;
+  width: 100%;
+}
+
+/*
+ * Operation hierarchy (AC3), without a ⋯ menu.
+ *
+ * The brief defers overflow menus — correctly: they trade discovery and keyboard
+ * reach for tidiness. So the two levels are separated by treatment instead, and
+ * by three signals that hold up at 161 rows:
+ *
+ *   1. ground   — category actions sit on the tinted band, row actions on the panel
+ *   2. ink      — category actions read at full weight, row actions recede
+ *   3. shape    — reorder pairs carry a hairline, so "these two move a thing" is
+ *                  legible without reading ↑ and ↓
+ *
+ * The danger rules are written *after* the level rules at equal specificity, so
+ * `删除` keeps its red. Getting that order wrong silently turns destructive
+ * actions grey, which is why it is spelled out here rather than left to chance.
+ */
+.admin-category__controls .admin__button,
+.admin-link__controls .admin__button {
+  color: var(--text-muted);
+}
+
+.admin-category__controls .admin__button {
+  color: var(--text);
+}
+
+.admin-category__controls .admin__button--icon,
+.admin-link__controls .admin__button--icon {
+  border-color: var(--border-input);
+}
+
+/*
+ * 「更多」 wears the same hairline as the reorder pair.
+ *
+ * Both are the controls that open something rather than act directly, and they
+ * now flank the row's direct actions (编辑). Giving them the same treatment makes
+ * "these open a panel" a shape the eye learns once, instead of three different
+ * button looks in a row.
+ */
+.admin-link__more {
+  border-color: var(--border-input);
+}
+
+/* Inside the panel the danger button keeps the same separation it had inline. */
+.admin-row-menu .admin__button--danger {
+  margin-inline-start: auto;
+}
+
+/*
+ * A fixed gap splits the destructive action off the neutral run, rather than
+ * leaving it third of six with nothing around it.
+ *
+ * `auto` was the first attempt and it silently did nothing: the controls sit in
+ * a grid `auto` column, so the flex line has no free space and an auto margin
+ * resolves to zero. Measured, not assumed — the row's 删除 came back with a
+ * computed `margin-left` of 0px. A length works whether or not there is slack.
+ */
+.admin-category__controls .admin__button--danger,
+.admin-link__controls .admin__button--danger {
+  margin-inline-start: 1.25rem;
+  color: var(--danger);
 }
 
 .admin__button--danger {
@@ -899,12 +1194,17 @@ textarea::placeholder {
 }
 
 .admin__button--add {
-  margin: 0.25rem 0.5rem;
   color: var(--text);
+  font-weight: 600;
 }
 
-.admin-category > .admin__form {
-  margin: 0.75rem 1rem;
+.admin-category > .admin__form,
+.admin-category__footer > .admin__form {
+  margin: 0.75rem 0;
+}
+
+.admin-category__footer > .admin__form {
+  margin: 0;
 }
 
 .admin-link > .admin__form {
@@ -956,16 +1256,97 @@ textarea::placeholder {
   margin: 0 0 1rem;
 }
 
+/* Inside the header the lede carries the spacing, so the title keeps its tick. */
+.branding__header .branding__title {
+  margin-bottom: 0.3rem;
+}
+
 .branding__error {
   margin: 0 0 1rem;
   color: var(--danger);
 }
 
+/*
+ * Page header (UI-REDESIGN-v3.2 / T4.3).
+ *
+ * The title used to be the only thing above the form, so the page opened with a
+ * bare heading and no statement of what saving means. One line of lede carries
+ * the single most important fact on this page — nothing takes effect until
+ * 保存 — and the header keeps the space for it without becoming a banner.
+ */
+.branding__header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.branding__header-text {
+  min-width: 0;
+}
+
+.branding__lede {
+  margin: 0.15rem 0 0;
+  max-width: 60rem;
+  font-size: 0.85rem;
+  line-height: 1.55;
+  color: var(--text-muted);
+}
+
+/*
+ * Form beside preview (T4.3).
+ *
+ * The form used to be a two-column grid that paired a 348px-tall 站点信息 with
+ * a 941px-tall 外观与访问 — about 590px of dead space under the short column,
+ * measured. One column of cards plus a preview rail removes the imbalance by
+ * construction: every card spans the column, so no card's height has to match
+ * its neighbour's.
+ *
+ * The rail is `auto`, not a fixed track: the preview panel sizes to its content
+ * and the form takes the rest. Below 64rem the two stack — the phone layout is
+ * one column, preview included, with no sticky behaviour (a sticky rail on a
+ * 812px-tall phone would eat the screen).
+ */
+.branding__layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 23rem;
+  gap: 1rem;
+  align-items: start;
+  margin-bottom: 1.25rem;
+}
+
 .branding__form {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-content: start;
+  min-width: 0;
   gap: 1rem;
-  margin-bottom: 1.5rem;
+  margin: 0;
+}
+
+.branding__aside {
+  position: sticky;
+  top: 1rem;
+  min-width: 0;
+}
+
+/*
+ * The preview card is a section like any other — same border, radius, fill.
+ *
+ * Its own class name rather than a `branding__preview` variant: that name is
+ * already the asset thumbnail (3rem square), and reusing it here made the card
+ * inherit `width: 3rem` — measured, a 48×48 sliver with the preview spilling
+ * out of it.
+ */
+.branding__preview-card {
+  gap: 0.6rem;
+}
+
+/* One labelled preview block inside the rail card. */
+.branding__preview-block {
+  display: grid;
+  gap: 0.3rem;
 }
 
 .branding__section {
@@ -986,10 +1367,83 @@ textarea::placeholder {
   font-weight: 650;
 }
 
-.branding__form > .branding__button {
+/*
+ * The save bar (T4.3).
+ *
+ * Sticky to the bottom of the viewport for as long as the page is on screen,
+ * so the one save control is reachable from anywhere on a form that measures
+ * 2,000–3,600px. It is the **only** save control: the old in-form button was
+ * removed rather than duplicated, and this one submits the form by association
+ * (`form="branding-form"`), leaving the submit handler untouched.
+ *
+ * `data-state` drives the status wording; the bar itself never changes shape,
+ * so it cannot shift the layout out from under a click.
+ */
+.branding__savebar {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 -1rem -1rem;
+  padding: 0.65rem 1rem;
+  border-top: 1px solid var(--border);
+  background-color: var(--surface-raised);
+}
+
+.branding__savebar-status {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.branding__savebar[data-state='unsaved'] .branding__savebar-status {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.branding__savebar[data-state='invalid'] .branding__savebar-status {
+  color: var(--danger);
+}
+
+.branding__savebar[data-state='saved'] .branding__savebar-status {
+  color: var(--brand-ink, var(--brand-primary));
+}
+
+.branding__savebar-button {
+  padding-inline: 1.75rem;
+}
+
+/*
+ * Full-width rows in the branding form.
+ *
+ * The theme preset picker and the advanced home-colour panel are both wider
+ * than a column — five cards with two thumbnails each, and a seven-field
+ * editor — and squeezing either into a narrow strip produces something
+ * unreadable rather than a saving of vertical space.
+ */
+.branding__section--wide,
+.branding__form > .branding-home {
   grid-column: 1 / -1;
-  justify-self: start;
-  padding-inline: 1.5rem;
+}
+
+/*
+ * Below the two-column breakpoint the rail stacks under the form and stops
+ * sticking (T4.3). A sticky rail on an 812px-tall phone would own most of the
+ * screen; the preview reads fine as the last card before the save bar, which
+ * is also the natural "check, then save" position.
+ */
+@media (max-width: 64rem) {
+  .branding__layout { grid-template-columns: minmax(0, 1fr); }
+  .branding__aside { position: static; }
+}
+
+@media (max-width: 40rem) {
+  /* The save button takes the free width so it stays a thumb-sized target. */
+  .branding__savebar { gap: 0.5rem; }
+  .branding__savebar-button { flex: 1; }
 }
 
 .branding__field {
@@ -1561,7 +2015,25 @@ textarea::placeholder {
   letter-spacing: -0.025em;
 }
 
-.admin-tabs {
+/*
+ * Admin shell navigation.
+ *
+ * A single `<nav>` serves both layouts. Below the shell breakpoint it is the top
+ * row of module buttons under the shared header; above it the same buttons
+ * become the 196px sidebar. The brand and account blocks only exist in the
+ * sidebar, so they stay hidden here — that is what keeps exactly one header,
+ * one set of module entries and one logout control at every width.
+ */
+.admin-shell {
+  display: block;
+}
+
+.admin-shell__brand,
+.admin-shell__account {
+  display: none;
+}
+
+.admin-shell__nav {
   display: flex;
   flex-wrap: wrap;
   gap: 0.4rem;
@@ -1572,7 +2044,8 @@ textarea::placeholder {
   background-color: var(--surface-muted);
 }
 
-.admin-tabs__tab {
+.admin-shell__navitem {
+  position: relative;
   font: inherit;
   min-height: 2.75rem;
   padding: 0.45rem 0.9rem;
@@ -1584,19 +2057,19 @@ textarea::placeholder {
   transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease;
 }
 
-.admin-tabs__tab:hover {
+.admin-shell__navitem:hover {
   border-color: var(--border-strong);
   background-color: var(--surface-muted);
 }
 
-.admin-tabs__tab[aria-current='true'] {
+.admin-shell__navitem[aria-current='page'] {
   background-color: var(--surface-raised);
   border-color: var(--border-input);
   color: var(--text);
   font-weight: 650;
 }
 
-.admin-tabs__tab:focus-visible {
+.admin-shell__navitem:focus-visible {
   outline: 3px solid var(--brand-primary);
   outline-offset: 2px;
 }
@@ -1656,9 +2129,9 @@ textarea::placeholder {
   content: '← ';
 }
 
-/* Tabs: quiet text tabs with a brand underline — the same language as the
- * homepage category jumps. The heavy segmented container goes away. */
-.app--admin .admin-tabs {
+/* Module entries: quiet text tabs with a brand underline — the same language as
+ * the homepage category jumps. The heavy segmented container goes away. */
+.app--admin .admin-shell__nav {
   gap: 0.25rem 1.5rem;
   margin-bottom: 1.5rem;
   padding: 0;
@@ -1667,7 +2140,7 @@ textarea::placeholder {
   background-color: transparent;
 }
 
-.app--admin .admin-tabs__tab {
+.app--admin .admin-shell__navitem {
   min-height: 2.75rem;
   padding: 0.45rem 0.1rem;
   border: 0;
@@ -1678,19 +2151,185 @@ textarea::placeholder {
   font-size: 1rem;
 }
 
-.app--admin .admin-tabs__tab:hover {
+.app--admin .admin-shell__navitem:hover {
   border-color: transparent;
   border-bottom-color: var(--border-strong);
   background-color: transparent;
   color: var(--text);
 }
 
-.app--admin .admin-tabs__tab[aria-current='true'] {
+.app--admin .admin-shell__navitem[aria-current='page'] {
   background-color: transparent;
   border-color: transparent;
   border-bottom-color: var(--brand-primary);
   color: var(--brand-ink, var(--brand-primary));
   font-weight: 700;
+}
+
+/*
+ * Beacon B — the admin shell becomes a 196px sidebar.
+ *
+ * The breakpoint is measured, not copied from the design: below it the sidebar
+ * would leave the branding form narrower than the 555px its two-column layout
+ * was verified at, so the form and the fixed preview rail would squeeze each
+ * other. At this width the shared header is hidden, because the sidebar carries
+ * the brand, the account and logout — exactly one of each at every width.
+ */
+@media (min-width: 80rem) {
+  .app--admin .site-header {
+    display: none;
+  }
+
+  .admin-shell {
+    display: grid;
+    grid-template-columns: 12.25rem minmax(0, 1fr);
+    gap: 2rem;
+    align-items: start;
+  }
+
+  .admin-shell__aside {
+    position: sticky;
+    top: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    min-height: calc(100dvh - 4.5rem);
+    padding-right: 1rem;
+    border-right: 1px solid var(--border);
+  }
+
+  .admin-shell__brand {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.35rem 0.5rem 1rem;
+    min-width: 0;
+  }
+
+  .admin-shell__brand-logo {
+    width: 1.5rem;
+    height: 1.5rem;
+    flex: none;
+    border-radius: 0.4rem;
+    object-fit: contain;
+  }
+
+  .admin-shell__brand-name {
+    margin: 0;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.95rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+
+  .app--admin .admin-shell__nav {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    gap: 3px;
+    margin-bottom: 0;
+  }
+
+  .app--admin .admin-shell__navitem {
+    display: flex;
+    align-items: center;
+    height: 2.75rem;
+    padding: 0 0.75rem;
+    border: 0;
+    border-radius: 0.5rem;
+    font-size: 0.9375rem;
+    text-align: left;
+  }
+
+  .app--admin .admin-shell__navitem:hover {
+    background-color: var(--surface-muted);
+    color: var(--text);
+  }
+
+  .app--admin .admin-shell__navitem[aria-current='page'] {
+    background-color: var(--brand-tint);
+    color: var(--brand-ink, var(--brand-primary));
+    font-weight: 700;
+  }
+
+  /* The 3px current-item rule: the same signage tick as the section titles. */
+  .app--admin .admin-shell__navitem[aria-current='page']::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0.5rem;
+    bottom: 0.5rem;
+    width: 3px;
+    border-radius: 2px;
+    background-color: var(--brand-primary);
+  }
+
+  .admin-shell__account {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    margin-top: auto;
+    padding: 0.75rem 0.5rem 0;
+    border-top: 1px solid var(--border);
+  }
+
+  .admin-shell__identity {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    min-width: 0;
+  }
+
+  .admin-shell__user {
+    overflow: hidden;
+    color: var(--text);
+    font-size: 0.8125rem;
+    font-weight: 650;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .admin-shell__role {
+    /* `--text-subtle` measures 4.49:1 here — below 4.5:1 at this size, so the
+     * role label uses the muted ink the rest of the shell uses. */
+    color: var(--text-muted);
+    font-size: 0.6875rem;
+  }
+
+  .admin-shell__logout {
+    font: inherit;
+    min-height: 2.75rem;
+    padding: 0 0.75rem;
+    border: 1px solid transparent;
+    border-radius: 0.5rem;
+    background-color: transparent;
+    color: var(--text-muted);
+    font-size: 0.8125rem;
+    text-align: left;
+    cursor: pointer;
+    transition: background-color 140ms ease, color 140ms ease;
+  }
+
+  .admin-shell__logout:hover {
+    background-color: var(--surface-muted);
+    color: var(--text);
+  }
+
+  .admin-shell__logout:focus-visible {
+    outline: 3px solid var(--brand-primary);
+    outline-offset: 2px;
+  }
+
+  /* Back first, module name beside it: with a sticky sidebar the current-item
+   * highlight is far from the content, so the content names itself. */
+  .app--admin .admin-management__toolbar {
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
 }
 
 /* Section titles across modules share the signage tick. */
@@ -1860,8 +2499,19 @@ textarea::placeholder {
     justify-content: flex-start;
   }
 
+  /*
+   * Once the controls wrap, 删除 lands on a line of its own and the extra gap
+   * stops separating anything — it just indents it out of alignment with the
+   * buttons above, which reads as a mistake. Wrapping is the separation here.
+   */
+  .admin-link__controls .admin__button--danger,
+  .admin-category__controls .admin__button--danger {
+    margin-inline-start: 0;
+  }
+
   .branding__section,
   .admin-category__header,
+  .admin-category__footer,
   .admin-link,
   .user-row {
     padding-inline: 0.75rem;
@@ -1912,12 +2562,12 @@ textarea::placeholder {
     margin-bottom: 0;
   }
 
-  .admin-tabs {
+  .admin-shell__nav {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .admin-tabs__tab {
+  .admin-shell__navitem {
     width: 100%;
   }
 }
@@ -2084,6 +2734,299 @@ textarea::placeholder {
   background-color: transparent;
 }
 
+/*
+ * B2 home layout tokens.
+ *
+ * `--home-panel-gap` is the ONLY thing that sets the distance between adjacent
+ * category panels (see the sibling selector further down). Desktop 16px, and
+ * 12px at ≤40rem; it is verified by measurement, not assumed.
+ *
+ * `--home-panel-slot` is the fixed heading slot inside each panel. It collapses
+ * to a normal heading row on narrow screens, where a reserved column would cost
+ * more than it explains.
+ */
+.app--home {
+  --home-panel-gap: 1rem;
+  --home-panel-slot: 11rem;
+
+  /*
+   * Shape language.
+   *
+   * These are B2-Compact's accepted values, restated as variables so a theme
+   * preset can move them. They stay literals rather than collapsing to
+   * `var(--border)` chains because a site with **no** preset must render exactly
+   * as it did before T3 (AC5) — the previous rules carried these numbers inline.
+   *
+   * Read by: the category panels (radius, border, shadow), the link blocks
+   * (radius, hover hairline), and the category chips / primary button (radius).
+   * Each value is overridden by `:root[data-home-preset='…'] .app.app--home`,
+   * which out-ranks both this block and the phone overrides below on
+   * specificity, so a preset keeps one radius at every width while a
+   * preset-less site keeps its existing two.
+   *
+   * Deliberately *not* covered here: anything that is not the home page. Every
+   * consumer is under `.app--home`, so a preset can never restyle the admin —
+   * including its danger styling, which is out of scope for any theme.
+   */
+  --home-panel-radius: 1rem;
+  --home-block-radius: 0.55rem;
+  --home-chip-radius: 0.6rem;
+  --home-panel-shadow: none;
+  --home-panel-border: var(--border);
+  --home-block-hover-border: var(--border-strong);
+
+  /*
+   * Home-page colour slots.
+   *
+   * `branding-theme.ts` writes an administrator's explicit choice as an inline
+   * custom property **on this element**, which is why the defaults must be
+   * declared here and nowhere else: a value set on `:root` would be shadowed by
+   * this very declaration.
+   *
+   * These defaults mirror what the existing theme and brand rules already
+   * produce, so they are only ever read by a *gated* rule whose slot was chosen.
+   * They are therefore not a second source of truth — but they must not drift
+   * from the baseline either, so each one points at the same token the
+   * corresponding existing rule uses:
+   *
+   *   --home-link-meta      → --text-muted  (B2 deliberately moved the small
+   *                            hostname/description text off --text-subtle,
+   *                            which measured 4.1:1 on a pale brand)
+   *   --home-icon-bg        → --surface-muted
+   *   --home-icon-ink       → --brand-ink   (matches the brand-mode icon rule;
+   *                            without a brand colour the existing rule already
+   *                            falls back to --text-muted on its own)
+   */
+  --home-accent-bg: var(--brand-primary);
+  --home-accent-ink: var(--brand-on-primary);
+  --home-link-title: var(--text);
+  --home-link-meta: var(--text-muted);
+  --home-icon-ink: var(--brand-ink, var(--text-muted));
+  --home-icon-bg: var(--surface-muted);
+  --home-category-title: var(--text);
+}
+
+/*
+ * Home-page colour consumption — one gate per slot.
+ *
+ * Each rule is gated on its **own** `data-home-*` attribute, set only for the slot
+ * the administrator actually chose. T1 used a single shared flag, which switched
+ * every rule on together and re-declared the untouched slots with their defaults;
+ * two of those defaults differ from what the theme and brand rules produce on
+ * their own, so overriding one colour silently changed others. Per-slot gating
+ * removes that class of bug by construction: an untouched slot emits no rule and
+ * keeps its existing cascade untouched.
+ *
+ * The gate must also out-rank the brand rules on specificity, not on source
+ * order. Class-level counts (ids and inline styles aside):
+ *
+ *   :root[data-brand-colors='true'] .app :is(.personal__button--primary, …)
+ *     → :root + [attr] + .app + :is(class)                          = 4
+ *   :root[data-brand-colors='true'] .app :is(…):hover:not(:disabled)
+ *     → :root + [attr] + .app + :is(class) + :hover + :not(:disabled) = 6
+ *   :root[data-brand-colors='true'] .app--home .destination-icon
+ *     → :root + [attr] + .app--home + .destination-icon              = 4
+ *   :root[data-home-accent-bg='true'] .app.app--home .personal__button--primary
+ *     → :root + [attr] + .app + .app--home + class                   = 5
+ *   … :hover:not(:disabled) counterpart                               = 7
+ *
+ * `.app.app--home` is deliberate: the home container carries **both** classes
+ * (`<div class="app app--home">`), so the compound selector matches that same
+ * element while adding the step needed to win outright. An earlier draft used a
+ * single `.app` and tied at 4, losing to the brand rules purely because those
+ * appear later in this file — the order-dependence this design avoids.
+ * `.app--home` also scopes every win to the home page, so the admin can never be
+ * reached from here.
+ */
+
+/*
+ * The accent button is the one slot pair that needs splitting.
+ *
+ * Background and foreground are gated separately so overriding only the
+ * background leaves the automatic foreground rule alone — and that rule now
+ * resolves `--home-accent-ink`, which `branding-theme.ts` recomputes from the
+ * overriding background. The two therefore cannot drift into an unreadable pair
+ * the way `--brand-on-primary` did, which is derived from the *brand* primary and
+ * never saw the background that actually rendered.
+ */
+:root[data-home-accent-bg='true'] .app.app--home .personal__button--primary {
+  background-color: var(--home-accent-bg);
+  border-color: var(--home-accent-bg);
+}
+
+:root[data-home-accent-ink='true'] .app.app--home .personal__button--primary {
+  color: var(--home-accent-ink);
+}
+
+/*
+ * Hover and focus re-assert the same colours, but only for the slots that were
+ * actually chosen. A hovered button with an untouched background must keep the
+ * brand hover treatment, not be pinned to an automatic value it never asked for.
+ *
+ * The hover rules carry the extra `:hover` / `:not(:disabled)` steps the brand
+ * hover rule has, plus `.app--home`, so they win on specificity rather than by
+ * being written later.
+ */
+:root[data-home-accent-bg='true'] .app.app--home .personal__button--primary:hover:not(:disabled) {
+  background-color: var(--home-accent-bg);
+  border-color: var(--home-accent-bg);
+}
+
+:root[data-home-accent-ink='true'] .app.app--home .personal__button--primary:hover:not(:disabled) {
+  color: var(--home-accent-ink);
+  box-shadow: inset 0 0 0 2px var(--home-accent-ink);
+}
+
+:root[data-home-accent-bg='true'] .app.app--home .personal__button--primary:focus-visible {
+  background-color: var(--home-accent-bg);
+  border-color: var(--home-accent-bg);
+}
+
+:root[data-home-accent-ink='true'] .app.app--home .personal__button--primary:focus-visible {
+  color: var(--home-accent-ink);
+}
+
+:root[data-home-link-title='true'] .app.app--home .link-card__title,
+:root[data-home-link-title='true'] .app.app--home .personal-link__title {
+  color: var(--home-link-title);
+}
+
+:root[data-home-link-meta='true'] .app.app--home .link-card__description,
+:root[data-home-link-meta='true'] .app.app--home .destination-secondary,
+:root[data-home-link-meta='true'] .app.app--home .personal-link__description {
+  color: var(--home-link-meta);
+}
+
+/*
+ * The destination icon, including the container behind a third-party raster.
+ *
+ * Split per slot so overriding the tile background does not also repaint the
+ * glyph: under a brand colour the automatic glyph is `--brand-ink` on a
+ * *transparent* tile, and a shared gate used to turn that into a filled
+ * `--surface-muted` tile.
+ *
+ * `.destination-icon img` paints the real site icon and is a bitmap: no CSS
+ * `color` can recolour its pixels, and this must never be promised. Only the
+ * container background is touched; the pixels are left alone.
+ */
+:root[data-home-icon-ink='true'] .app.app--home .destination-icon {
+  color: var(--home-icon-ink);
+}
+
+:root[data-home-icon-bg='true'] .app.app--home .destination-icon {
+  background-color: var(--home-icon-bg);
+}
+
+:root[data-home-icon-bg='true'] .app.app--home .destination-icon img {
+  background-color: var(--home-icon-bg);
+}
+
+:root[data-home-category-title='true'] .app.app--home .category__title,
+:root[data-home-category-title='true'] .app.app--home .personal-category__title {
+  color: var(--home-category-title);
+}
+
+/*
+ * ── Preset shape ───────────────────────────────────────────────────────────
+ *
+ * The five themes' *form* — panel / block / chip radius, the panel shadow and the
+ * two borders a theme may strengthen. Colour is not here on purpose: a preset's
+ * colours are written into the three persisted brand fields when it is selected,
+ * so the saved home page and the saved admin can never disagree about what
+ * "forest-mist" means. Only what the brand fields cannot express lives here.
+ *
+ * The gate sits on the home element itself, `.app.app--home[data-home-preset='…']`
+ * — not on `:root`.
+ *
+ * T3 put it on `:root` so the shape would survive navigation without re-applying
+ * it per mount. T3.1 measured the cost of that choice: with the preset mirrored
+ * onto `<html>`, the admin preview could not express a *draft* basis at all,
+ * because `<html data-theme>` is the saved one and its `[data-theme='dark']`
+ * variant outranked anything the preview declared. Gating on the home element
+ * removes the conflict by construction — there is exactly one element that can
+ * carry a preset, and it is the one the rules style.
+ *
+ * `data-home-basis` is the basis the home page renders in. On the site it mirrors
+ * `defaultTheme`; in the admin preview it is the form's draft. It is deliberately
+ * its own attribute rather than a reuse of `data-theme`: `data-theme` also drives
+ * the admin, and a home-theme preview must never be able to pull the whole
+ * backend along with it.
+ *
+ * Light values are the base rule and dark values are the override, matching the
+ * token convention at the top of this file.
+ */
+.app.app--home[data-home-preset='nordic-frost'] {
+  --home-panel-radius: 1rem;
+  --home-block-radius: 0.55rem;
+  --home-chip-radius: 0.6rem;
+  --home-panel-shadow: none;
+  --home-panel-border: var(--border);
+  --home-block-hover-border: var(--border-strong);
+}
+
+.app.app--home[data-home-preset='warm-paper'] {
+  --home-panel-radius: 0.75rem;
+  --home-block-radius: 0.4rem;
+  --home-chip-radius: 0.45rem;
+  --home-panel-shadow: 0 1px 2px rgba(60, 45, 28, 0.05), 0 6px 16px rgba(60, 45, 28, 0.06);
+  --home-panel-border: var(--border);
+  --home-block-hover-border: var(--border-strong);
+}
+
+.app.app--home[data-home-preset='warm-paper'][data-home-basis='dark'] {
+  --home-panel-shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 8px 20px rgba(0, 0, 0, 0.28);
+}
+
+.app.app--home[data-home-preset='deep-sea'] {
+  --home-panel-radius: 1.25rem;
+  --home-block-radius: 0.65rem;
+  --home-chip-radius: 0.7rem;
+  --home-panel-shadow: 0 2px 4px rgba(16, 24, 32, 0.05), 0 10px 26px rgba(16, 24, 32, 0.07);
+  --home-panel-border: var(--border);
+  --home-block-hover-border: var(--border-strong);
+}
+
+.app.app--home[data-home-preset='deep-sea'][data-home-basis='dark'] {
+  --home-panel-shadow: 0 2px 6px rgba(0, 0, 0, 0.4), 0 12px 30px rgba(0, 0, 0, 0.32);
+}
+
+.app.app--home[data-home-preset='forest-mist'] {
+  --home-panel-radius: 1rem;
+  --home-block-radius: 0.5rem;
+  --home-chip-radius: 0.55rem;
+  --home-panel-shadow: none;
+  --home-panel-border: var(--border);
+  --home-block-hover-border: var(--border-strong);
+}
+
+/*
+ * High contrast is the one preset that must draw its own boundaries.
+ *
+ * Its canvas and surface are both `#FFFFFF` (both `#000`/`#0A0A0A` in dark), so
+ * the panel is identified by its border alone — and the shared derivation draws
+ * that border at a fixed 0.22 mix weight, which measured 2.66:1 (light) against
+ * the 3:1 that WCAG 1.4.11 asks of the visual information needed to identify a
+ * component. Naming a theme "high contrast" while shipping a 2.66:1 boundary
+ * would be worse than either renaming it or changing the engine for everybody;
+ * pure black/white here is the minimal fix and it stays inside the home page.
+ *
+ * No new persisted field and no change to `branding-theme.ts` — see
+ * `home-theme-presets.ts` for the full reasoning.
+ */
+.app.app--home[data-home-preset='high-contrast'] {
+  --home-panel-radius: 0.5rem;
+  --home-block-radius: 0.35rem;
+  --home-chip-radius: 0.4rem;
+  --home-panel-shadow: none;
+  --home-panel-border: #000000;
+  --home-block-hover-border: #000000;
+}
+
+.app.app--home[data-home-preset='high-contrast'][data-home-basis='dark'] {
+  --home-panel-border: #FFFFFF;
+  --home-block-hover-border: #FFFFFF;
+}
+
 .app--home .personal__header {
   margin-bottom: 0.65rem;
 }
@@ -2117,34 +3060,84 @@ textarea::placeholder {
 }
 
 /*
- * Category jumps: quiet text links, not filled pills — the signage below
- * already carries the visual weight.
+ * Category jumps: compact chip buttons.
+ *
+ * These were quiet text links with a transparent border and no fill, which made
+ * the top navigation read as a line of body copy — there was nothing to aim at
+ * and no way to tell a jump control from a heading. The chip restores the
+ * affordance using the **same** visual language the B2 panels already use, so it
+ * introduces no new vocabulary: raised surface fill (the panels' own
+ * `--surface-raised`), a hairline `--border`, and on hover exactly the pair the
+ * link blocks use — `--border-strong` plus `--brand-tint`. It deliberately does
+ * not fill with `--brand-primary`: the primary button, the focus ring and the
+ * personal-panel border already carry brand, and a filled chip row would add a
+ * second, competing emphasis above the panels.
+ *
+ * `--surface-raised` is not hard-coded white, so light, dark and a pale admin
+ * brand all resolve through the same runtime contrast mechanism as the panels.
+ *
+ * The border is `--border-input`, not the panels' `--border`. A chip is an
+ * interactive control, and `--border-input` is what this codebase already uses
+ * for control boundaries (every input and secondary button). Measured against
+ * the chip's own fill, `--border` gives only 1.23:1 in light and 1.33:1 in
+ * dark — the chip boundary would be carried by an almost invisible hairline.
+ * `--border-input` measures 1.79:1 light / 2.65:1 dark, which is where the rest
+ * of the interactive controls sit. `--border-strong` (2.74:1 / 4.56:1) is held
+ * back for hover, so the border still escalates on interaction.
+ *
+ * Radius is 0.6rem rather than the exploration build's 999px stadium. A
+ * category name is arbitrary user text: a full pill stretches into a lozenge
+ * when a long Chinese name wraps to two lines, which reads as a tag cloud
+ * instead of a control. 0.6rem sits with the 0.55rem link blocks and the 1rem
+ * panels, so the page keeps one radius family.
  */
 .category-nav {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.25rem 1.25rem;
+  gap: 0.4rem;
   margin-bottom: 1.25rem;
 }
 
 .category-nav__item {
   font: inherit;
   font-size: 0.9rem;
+  /* 2.75rem = 44px: the pointer/keyboard target floor, unchanged from P0. */
   min-height: 2.75rem;
-  padding: 0.4rem 0.1rem;
-  border: 0;
-  border-bottom: 2px solid transparent;
-  border-radius: 0;
-  background-color: transparent;
-  color: var(--text-muted);
+  /* A long category name must never widen the page; it wraps inside the chip. */
+  max-width: 100%;
+  padding: 0.4rem 0.75rem;
+  border: 1px solid var(--border-input);
+  border-radius: 0.6rem;
+  background-color: var(--surface-raised);
+  color: var(--text);
   overflow-wrap: anywhere;
   cursor: pointer;
+  transition: border-color 160ms ease, background-color 160ms ease;
 }
 
+/* Same hover pair as the link blocks, so a chip and a link read as one system. */
 .category-nav__item:hover {
-  background-color: transparent;
-  border-bottom-color: var(--brand-primary);
+  border-color: var(--border-strong);
+  background-color: var(--brand-tint);
   color: var(--text);
+}
+
+/*
+ * Preset chip radius.
+ *
+ * Written as an `.app--home` rule rather than folded into the base declaration
+ * above for two reasons: the chip variable then resolves on the home page only,
+ * so a preset cannot reach any future chip rendered outside it; and the base rule
+ * keeps owning everything that is *not* the preset (height floor, hover pair,
+ * wrapping) in one place.
+ *
+ * The primary button shares the chip radius because it is the page's single
+ * accent object — giving it its own value would make a theme look like two
+ * themes. Its size, weight and shadow stay under the shared button rules.
+ */
+.app--home .category-nav__item,
+.app--home .personal__button--primary {
+  border-radius: var(--home-chip-radius);
 }
 
 .app :is(a, button, input, select, textarea, summary):focus-visible,
@@ -2154,57 +3147,175 @@ textarea::placeholder {
   outline-offset: 2px;
 }
 
-.personal__categories,
-.public-navigation__categories {
+/*
+ * B2 / Compact Launchpad — category panels.
+ *
+ * A category is a bordered **panel** with its heading in a fixed left slot and
+ * its links in a compact block grid beside it. The 60-link case is the reason:
+ * a flat list of headings plus card grids loses the sense of "which category am
+ * I in" part-way down, because every link looks like the start of a new group.
+ *
+ * The heading slot is what makes the stripe read as one column per category
+ * instead of a stack of unrelated cards.
+ */
+.app--home .category,
+.app--home .personal-category {
   display: grid;
-  gap: 1.75rem;
+  grid-template-columns: var(--home-panel-slot) minmax(0, 1fr);
+  gap: 1.25rem;
+  padding: 1rem 1.1rem 1.1rem;
+  border: 1px solid var(--home-panel-border);
+  border-radius: var(--home-panel-radius);
+  background-color: var(--surface-raised);
+  /* `none` for every preset but two; the lift is never decorative-only. */
+  box-shadow: var(--home-panel-shadow);
+}
+
+.app--home .personal-category {
+  /* Mixed onto the preset's own panel border, not the shared one, so a preset
+     that strengthens its boundary does not lose the personal-panel accent. */
+  border-color: color-mix(in srgb, var(--brand-primary) 32%, var(--home-panel-border));
 }
 
 /*
- * Category signage: a confident wayfinding marker, not small muted text.
- * The brand-ink color plus the platform-edge tick make each category a visual
- * anchor for scanning. Sentence case, no eyebrow labels.
+ * T4.4 (Beacon A): the elevated 我的常用 panel.
+ *
+ * The brand tint marks the page's most-used panel without introducing a second
+ * accent colour — `--brand-tint-strong` is the administrator's own brand mixed
+ * into the raised surface, so it re-resolves when branding changes and needs no
+ * hand-maintained contrast pair. It is a **background only**: the panel keeps
+ * `--home-panel-border` semantics, so a preset that reshapes the panel is not
+ * overridden here, and every text colour inside still resolves against
+ * `--surface-raised`-derived tokens exactly as it does on the other panels.
+ *
+ * Deliberately scoped to `.app--home`: this is the one place an elevated surface
+ * exists, and a `:root` declaration would make it reachable from the admin.
+ */
+.app--home .personal-category--elevated {
+  background-color: var(--brand-tint-strong);
+  border-color: color-mix(in srgb, var(--brand-primary) 32%, var(--home-panel-border));
+}
+
+/*
+ * Category-to-category spacing: desktop 16px, phone 12px.
+ *
+ * Applied to **adjacent panels** with a sibling selector on purpose. Setting
+ * `gap` on the ancestor `.personal__categories` / `.public-navigation__categories`
+ * grid does not work here: each panel is wrapped in its own `<section>`, so the
+ * grid's children are the sections, and a gap declared there never reaches
+ * between two panels. That mistake produced a measured 0px gap in the design
+ * exploration — the panels touched and only two adjacent borders remained to
+ * separate them.
+ *
+ * The personal↔public section distance is a different level and keeps the
+ * rhythm above rather than being forced down to 16px.
+ */
+.app--home .category + .category,
+.app--home .personal-category + .personal-category {
+  margin-top: var(--home-panel-gap);
+}
+
+.app--home .category__head {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+/*
+ * The heading slot.
+ *
+ * P0 marked the category with a 3px brand rail and brand-ink text. Under a pale
+ * admin brand that rail measured 1.29:1 and the brand-ink text lost contrast, so
+ * B2 drops the rail entirely: the panel border is the boundary, the name uses
+ * the page foreground, and the brand survives on the primary button, focus ring
+ * and personal-panel border. `--brand-ink` is not used here for that reason.
  */
 .app--home .category__title,
 .app--home .personal-category__title {
-  font-size: 1.08rem;
-  font-weight: 700;
-  line-height: 1.35;
-  letter-spacing: -0.01em;
-  border: 0;
-  border-left: 3px solid var(--brand-primary);
-  padding: 0.1rem 0 0.1rem 0.75rem;
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
   margin: 0;
-  color: var(--brand-ink, var(--brand-primary));
+  padding: 0;
+  border: 0;
+  font-size: 1.05rem;
+  font-weight: 650;
+  line-height: 1.3;
+  letter-spacing: -0.015em;
+  color: var(--text);
   scroll-margin-top: 1rem;
+  overflow-wrap: anywhere;
 }
 
-.app--home .category__title {
-  margin-bottom: 0.35rem;
+.category__name {
+  min-width: 0;
+}
+
+/* Hostname-and-count style, tabular so counts line up between panels. */
+.app--home .category__count {
+  flex: 0 0 auto;
+  font-family: 'Cascadia Mono', ui-monospace, Consolas, monospace;
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
 }
 
 .app--home .personal-category__header {
   justify-content: flex-start;
-  margin-bottom: 0.35rem;
-  gap: 0.5rem;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0;
+  padding-bottom: 0.6rem;
+  border-bottom: 1px solid var(--border);
 }
 
 .app--home .personal-category__controls {
   gap: 0.15rem;
+  margin-left: auto;
 }
 
 /*
- * Launchpad redesign (v2): icon-forward link cards in a responsive grid.
+ * B2 compact link blocks.
  *
- * A navigation site is a launchpad: you scan icons and launch. Links are
- * compact cards — site icon first, then title and a one-line destination —
- * arranged in a dense grid under clear category signage. Brand color stays
- * a signal color: hover lift, focus ring, Quick Add, signage. Nothing else.
+ * P0's per-link card (5.25rem tall, 1px border, own radius) is replaced by a
+ * 3.25rem block with **no border of its own** — the panel already provides the
+ * container, and a second border per item turned a 60-link category into 60
+ * competing objects. `minmax(min(13.5rem, 100%), 1fr)` keeps the track floor
+ * inside a 375px viewport so a long hostname can never widen a column and cause
+ * horizontal overflow.
+ *
+ * T4.4 (Beacon A) splits this in two. The **public** list is no longer a grid at
+ * all: it becomes a single-column stack of full-width 52px directory rows, which
+ * is what makes a 60-link category scannable in ~3 screens instead of ~9. Only
+ * the **personal** list keeps the auto-fill tile grid. The two sections are
+ * deliberately no longer one shared declaration — sharing them is exactly what
+ * made the sections visually identical before.
  */
-.app--home .link-list,
 .app--home .personal-link-list {
-  grid-template-columns: repeat(auto-fill, minmax(12.5rem, 1fr));
-  gap: 0.875rem;
+  grid-template-columns: repeat(auto-fill, minmax(min(13.5rem, 100%), 1fr));
+  gap: 0.35rem 0.5rem;
+  min-width: 0;
+}
+
+/*
+ * Public directory rows.
+ *
+ * `minmax(0, 1fr)` rather than `1fr`: a plain `1fr` track has an `auto` minimum,
+ * so one long unbreakable hostname could widen the whole column and push the
+ * page into horizontal scroll. Zeroing the minimum is what makes the truncation
+ * below actually take effect instead of being overridden by the track.
+ *
+ * T4.4 Visual Adjustment 01: the phone keeps this single column, and the
+ * two-column desktop is applied above the breakpoint in the media query further
+ * down. The column floor is `minmax(0, 1fr)` in both cases so a long hostname
+ * can never widen a track.
+ */
+.app--home .link-list {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.125rem;
+  min-width: 0;
 }
 
 .app--home .link-card,
@@ -2218,40 +3329,89 @@ textarea::placeholder {
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 0.875rem;
-  min-height: 5.25rem;
+  gap: 0.6rem;
+  min-height: 3.25rem;
   height: 100%;
   width: 100%;
-  padding: 1rem 1.125rem;
-  border: 1px solid var(--border);
-  border-radius: 0.875rem;
-  background-color: var(--surface-raised);
+  padding: 0.35rem 0.5rem;
+  border: 1px solid transparent;
+  border-radius: var(--home-block-radius);
+  background-color: transparent;
   color: var(--text);
   text-decoration: none;
   box-shadow: none;
-  transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+  transition: border-color 160ms ease, background-color 160ms ease;
 }
 
 /*
- * Launch feedback: the card lifts a touch and its border takes the brand
- * color — the tactile "press to go" of a launchpad tile.
+ * T4.4 (Beacon A): the public directory row.
+ *
+ * `height` (not `min-height`) pins the row to exactly 52px. The inherited
+ * `min-height` is a floor that a long title could exceed — and a title that
+ * silently doubles its row's height is precisely the density failure this
+ * redesign exists to remove. The title truncates instead (see the ellipsis
+ * rules below), so 52px holds for every one of the ~161 rows.
+ *
+ * `height: 100%` is deliberately **not** inherited here: with a single-column
+ * list every `<li>` is its own row, so a percentage height would resolve
+ * against an auto-height parent and collapse the row to nothing.
+ */
+.app--home .link-card__anchor {
+  height: 3.25rem;
+  padding: 0 0.75rem;
+  gap: 0.8125rem;
+}
+
+/*
+ * T4.4 (Beacon A): the personal **tile**.
+ *
+ * A 40px icon plus a two-line copy column does not fit the shared 3.25rem row,
+ * so the tile grows to 4.25rem. The tile is *visually* the larger object (bigger
+ * icon, taller box, two lines) while the directory row is the compact one —
+ * that contrast is the whole point of the redesign, and it is why these two are
+ * no longer sized as one rule.
+ *
+ * `min-height` rather than `height` here, unlike the row: a tile is a grid track
+ * that must stretch to match its neighbours, and `height: 100%` would resolve
+ * against an auto-height parent. The icon and copy column are centred, so a
+ * taller track (e.g. a category whose longest title wraps in a narrow column)
+ * stays visually balanced instead of top-aligned.
+ */
+.app--home .personal-link__anchor {
+  min-height: 4.25rem;
+  padding: 0.5rem 0.625rem;
+  gap: 0.625rem;
+}
+
+/*
+ * Launch feedback: the block takes a hairline border and a brand tint rather
+ * than lifting. A translate on a 3.25rem row inside a dense grid reads as the
+ * whole grid shifting, and the vertical space saved matters more here.
  */
 .app--home .link-card__anchor:hover,
 .app--home .personal-link__anchor:hover {
-  border-color: var(--brand-primary);
-  box-shadow: var(--shadow-soft), 0 0 0 1px var(--brand-primary);
-  transform: translateY(-2px);
+  border-color: var(--home-block-hover-border);
+  background-color: var(--brand-tint);
+  transform: none;
 }
 
 .app--home .link-card__anchor:active,
 .app--home .personal-link__anchor:active {
-  transform: translateY(0);
-  box-shadow: none;
+  transform: none;
 }
 
-/* Cards don't use the base chevron — the whole tile is the affordance. */
+/*
+ * Blocks don't use the base chevron — the whole block is the affordance.
+ *
+ * Both pseudo-elements must be cleared. P0's card drew the arrow with
+ * `::before` (the dash) and `::after` (the head), so cancelling only `::before`
+ * leaves the chevron head floating at the block's right edge — visible in the
+ * first implementation screenshot.
+ */
 .app--home .link-card__anchor::before,
-.app--home .link-card__anchor::after {
+.app--home .link-card__anchor::after,
+.app--home .personal-link__anchor::before,
+.app--home .personal-link__anchor::after {
   content: none;
 }
 
@@ -2267,22 +3427,48 @@ textarea::placeholder {
   flex-direction: column;
   align-items: stretch;
   gap: 0;
+  min-width: 0;
 }
 
 .app--home .personal-link__anchor {
   flex: 1 1 auto;
+  min-width: 0;
 }
 
 /*
- * Icon-forward: the site icon is the primary scan target on a launchpad,
- * so it gets real presence. Letter fallbacks stay bold and legible.
+ * Icon-forward: the site icon is the primary scan target on a launchpad, so it
+ * gets real presence. Letter fallbacks stay bold and legible.
+ *
+ * T4.4 (Beacon A): the personal tile icon is 40px and the public directory-row
+ * icon is 28px. That 12px difference **is** the dual density — the two sections
+ * must be told apart at a glance without reading a single label, and an icon
+ * ratio is the only signal that survives at phone width. The two values are
+ * scoped per section below; this shared block keeps only what both agree on.
  */
 .app--home .destination-icon {
-  flex-basis: 2.75rem;
-  width: 2.75rem;
-  height: 2.75rem;
-  border-radius: 0.65rem;
-  font-size: 1.25rem;
+  flex-basis: 2rem;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.45rem;
+  font-size: 0.95rem;
+}
+
+/* Personal tile icon — Beacon A, 40px (`--tile-icon`). */
+.app--home .personal-link__anchor .destination-icon {
+  flex-basis: 2.5rem;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.625rem;
+  font-size: 1.05rem;
+}
+
+/* Public directory-row icon — Beacon A, 28px (`--row-icon`). */
+.app--home .link-card__anchor .destination-icon {
+  flex-basis: 1.75rem;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 0.4375rem;
+  font-size: 0.8rem;
 }
 
 .destination-icon {
@@ -2312,28 +3498,100 @@ textarea::placeholder {
 .destination-copy {
   display: grid;
   min-width: 0;
-  gap: 0.2rem;
+  gap: 0.05rem;
 }
 
+/*
+ * T4.4 Visual Adjustment 01 — the public directory row.
+ *
+ * The row is now a **two-line** stack: name on line 1, description on line 2,
+ * with the host in its own right-hand column.
+ *
+ * The host sits outside the copy block rather than inside it, so it can be
+ * right-aligned against the row's own right edge while the copy block takes
+ * what is left. The copy block stays a one-column grid, so the name and the
+ * description stack.
+ *
+ * Shrink priority is the whole game here, and it is deliberate: the **host**
+ * gives way first, the description gives way second, and the name gives way
+ * last. The host is `flex-shrink: 1` with `min-width: 0` and a `max-width`
+ * cap, so a long hostname truncates instead of consuming the row; the copy
+ * block is `flex-shrink: 1` with `min-width: 0` so the *description* can
+ * ellipsise rather than push the row wider. Neither ever overflows the row,
+ * because the row itself has a hard `width: 100%` and both children are
+ * allowed to shrink below their content size.
+ */
+.app--home .link-card__anchor .destination-copy {
+  display: grid;
+  flex: 1 1 auto;
+  min-width: 0;
+  gap: 0.05rem;
+  align-content: center;
+}
+
+/*
+ * The host column.
+ *
+ * `margin-left: auto` consumes the slack and pins the host to the right edge.
+ * `max-width` caps how much of the row one long hostname may take — the host
+ * is data, and data is the part of a directory that is allowed to be cut.
+ */
+.app--home .link-card__anchor .link-card__host {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 45%;
+  margin-left: auto;
+  text-align: right;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/*
+ * The description line.
+ *
+ * The base rule already gives it a single line with an ellipsis; what is added
+ * here is the **floor**. `min-width` in `ch` units reserves enough room for a
+ * readable fragment of the description no matter how narrow the row gets, so a
+ * long host can never squeeze the description down to nothing — the one piece
+ * of text a human actually wrote about the destination.
+ *
+ * The floor is deliberately small (8ch ≈ 60px at the description's 0.7rem):
+ * it is a guarantee of *some* description, not a promise of the whole one.
+ */
+.app--home .link-card__anchor .link-card__description {
+  min-width: 8ch;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/*
+ * B2 titles truncate on one line.
+ *
+ * A 3.25rem block cannot hold two wrapped lines, and a 60-link category with
+ * variable-length titles would otherwise double its own height. The full text
+ * stays reachable through the anchor's `title` attribute.
+ */
 .app--home .link-card__title,
 .app--home .personal-link__title {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  display: block;
   overflow: hidden;
   overflow-wrap: anywhere;
-  font-size: 1rem;
-  font-weight: 650;
-  line-height: 1.35;
-  letter-spacing: -0.01em;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: 0;
 }
 
 .app--home .link-card__description,
 .destination-secondary,
 .personal-link__description {
-  font-size: 0.8rem;
+  font-size: 0.7rem;
   line-height: 1.4;
-  color: var(--text-subtle);
+  color: var(--text-muted);
   font-weight: 400;
   overflow: hidden;
   white-space: nowrap;
@@ -2343,13 +3601,18 @@ textarea::placeholder {
 /*
  * Hostnames are data: set them in a tabular monospace so the destination
  * reads at a glance. Real descriptions keep the proportional body face.
+ *
+ * `--text-muted` rather than `--text-subtle`: below ~14px the tertiary token
+ * measured 4.1:1 against a pale admin brand, while the muted token is the one
+ * branding-theme guarantees at 4.5:1.
  */
 .app--home .destination-secondary,
 .app--home .personal-link__description {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
-  font-size: 0.78rem;
+  font-size: 0.7rem;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0;
+  color: var(--text-muted);
 }
 
 .app--home .category__empty,
@@ -2386,6 +3649,34 @@ textarea::placeholder {
   grid-column: 1 / -1;
 }
 
+/*
+ * T4.4 Visual Adjustment 01 — the desktop two-column public directory.
+ *
+ * The breakpoint is **64rem (1024px)**, chosen from measurement rather than
+ * taste. The category panel reserves an 11rem heading slot, so the list's
+ * available width was measured at every candidate width: 739px at 1024px
+ * viewport, 830px at 1120px, 906px at 1200px.
+ *
+ * Two columns need roughly 380px each to hold a 28px icon, a truncated name, a
+ * description and a right-aligned host without the description collapsing to
+ * nothing — so the two-column rule starts where the list is wide enough for
+ * two of those, and stays one column below it. The phone (≤40rem) is one
+ * column by construction, and the range between is a single column as well,
+ * because a two-column row narrower than ~370px would truncate the description
+ * to a couple of characters.
+ *
+ * The personal tile grid is deliberately NOT touched here: the public directory
+ * is a *list* to be scanned, while the personal area is a *launchpad* whose
+ * tiles are the recognisable objects. They answer different questions and keep
+ * different densities.
+ */
+@media (min-width: 64rem) {
+  .app--home .link-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 0.5rem;
+  }
+}
+
 @media (max-width: 40rem) {
   .app--home {
     padding: 1rem 1rem 1.5rem;
@@ -2416,37 +3707,147 @@ textarea::placeholder {
     gap: 0.5rem;
   }
 
-  .category-nav__item {
+  /*
+   * Phone: one scrollable chip row instead of a wrapped block.
+   *
+   * Measured at 375px with nine categories, wrapping produced a 188px-tall
+   * navigation that pushed the first link block to y=497 — roughly 60% of an
+   * 812px screen spent above the first actual destination. A single scrolling
+   * row keeps the row at 44px and the first link near the fold.
+   *
+   * `max-width: 100%` + `min-width: 0` are what actually keep the scroller
+   * inside the viewport; the design exploration measured 48px of page-level
+   * horizontal overflow when they were missing. `overscroll-behavior-x` stops
+   * the swipe from chaining to the page, and the padding-inline offset keeps a
+   * scrolled chip from resting flush against the screen edge.
+   */
+  .category-nav {
+    flex-wrap: nowrap;
     max-width: 100%;
-    font-size: 0.82rem;
-    padding-inline: 0.1rem;
+    min-width: 0;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+    /* Room for the chip focus ring, which would otherwise be clipped. */
+    padding: 3px;
+    margin: -3px -3px 1.25rem;
   }
 
-  .app--home .link-list,
+  .category-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .category-nav__item {
+    flex: 0 0 auto;
+    max-width: 100%;
+    font-size: 0.82rem;
+    padding: 0.4rem 0.7rem;
+  }
+
+  /*
+   * T4.4: the phone list stays a **grid for the personal tiles only**. The
+   * public directory rows must remain a single column here as they are on
+   * desktop — re-declaring `.link-list` into an `auto-fill` grid would undo the
+   * Beacon redesign at exactly the width where density matters most.
+   */
   .app--home .personal-link-list {
-    grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr));
-    gap: 0.625rem;
+    grid-template-columns: repeat(auto-fill, minmax(min(11rem, 100%), 1fr));
+    gap: 0.35rem 0.4rem;
   }
 
   .app--home .link-card__anchor,
   .app--home .personal-link__anchor {
-    padding: 0.8rem 0.9rem;
-    gap: 0.7rem;
-    min-height: 4.5rem;
-    border-radius: 0.75rem;
+    padding: 0.35rem 0.45rem;
+    gap: 0.5rem;
+    /* Same variable as desktop. A preset out-ranks this block by specificity, so
+       a themed site keeps one block radius on a phone while a preset-less site
+       keeps the slightly tighter phone value it has always had. */
+    border-radius: var(--home-block-radius);
   }
 
-  .app--home .destination-icon {
-    flex-basis: 2.25rem;
-    width: 2.25rem;
-    height: 2.25rem;
-    border-radius: 0.55rem;
-    font-size: 1.05rem;
+  /*
+   * T4.4: only the personal tile shrinks on a phone. The directory row keeps its
+   * 52px and its 28px icon, because 52px is already the minimum comfortable
+   * touch target — tightening it further would trade away reachability to save
+   * pixels on the one surface that is explicitly a *directory*.
+   */
+  .app--home .personal-link__anchor {
+    min-height: 3.75rem;
+  }
+
+  /*
+   * The phone icon step-down, kept per section so the 40px/28px density ratio
+   * survives: 34px vs 26px. Both shrink (a 40px icon is too heavy beside
+   * 0.85rem text at 375px) but they never converge.
+   */
+  .app--home .personal-link__anchor .destination-icon {
+    flex-basis: 2.125rem;
+    width: 2.125rem;
+    height: 2.125rem;
+    border-radius: 0.5rem;
+    font-size: 0.95rem;
+  }
+
+  .app--home .link-card__anchor .destination-icon {
+    flex-basis: 1.625rem;
+    width: 1.625rem;
+    height: 1.625rem;
+    border-radius: 0.4rem;
+    font-size: 0.75rem;
   }
 
   .app--home .link-card__title,
   .app--home .personal-link__title {
-    font-size: 0.92rem;
+    font-size: 0.85rem;
+  }
+
+  /*
+   * T4.4 Visual Adjustment 01 — phone: the host yields, the description does not.
+   *
+   * At 375px a 32-character hostname and a description cannot both keep their
+   * full width, and the contract ranks them: the description is the text a
+   * human wrote, so it keeps a readable fragment and the host gives way.
+   *
+   * The host is capped at 40% of the row and is allowed to shrink to nothing
+   * (`min-width: 0`), so on the narrowest screen it disappears and the
+   * description is left with the full width. A link with **no** description
+   * keeps its host as the second line instead (see the `destination-secondary`
+   * fallback in `LinkCard`), so no row ever loses its destination entirely.
+   */
+  .app--home .link-card__anchor .link-card__host {
+    max-width: 40%;
+  }
+
+  /*
+   * Phone: 12px between adjacent panels, and the heading slot becomes a normal
+   * row above the blocks. A reserved 11rem column on a 375px screen would cost
+   * almost a third of the width to hold one word.
+   */
+  .app--home {
+    --home-panel-gap: 0.75rem;
+    /*
+     * Phone-only tightening, unchanged from B2-Compact.
+     *
+     * Declared as *variables*, not as literal radii on the panel and the blocks:
+     * one breakpoint owns one set of numbers, and every consumer simply reads
+     * `var()`. A preset out-ranks this block on specificity (class level 4 vs 1)
+     * and so keeps a single radius at every width, while a site with no preset
+     * keeps exactly the values it renders today.
+     */
+    --home-panel-radius: 0.875rem;
+    --home-block-radius: 0.5rem;
+  }
+
+  .app--home .category,
+  .app--home .personal-category {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.75rem;
+    padding: 0.9rem 0.9rem 1.1rem;
+    border-radius: var(--home-panel-radius);
+  }
+
+  .app--home .personal-category__header {
+    padding-bottom: 0.55rem;
   }
 
   .app--home .personal[data-organizing='true'] .personal-link-list {
@@ -2464,8 +3865,17 @@ textarea::placeholder {
 }
 
 /* Preserve base tokens separately: canvas and raised surfaces may need opposite
-   foregrounds. All fallbacks compute to the accepted light/dark values. */
-:root {
+   foregrounds. All fallbacks compute to the accepted light/dark values.
+
+   Element-scoped for the same reason as the two token blocks above: these are the
+   *pre-brand* values, and a fallback that resolves against the site's basis while
+   the element is showing another one is how an unbranded draft previewed light
+   chrome over a dark canvas. Declared here rather than on the preview element on
+   purpose — this must live on an element that the `.app` remap does not also
+   target, or `--theme-text: var(--text)` and `--text: var(…, var(--theme-text))`
+   would reference each other and both would become invalid. */
+:root,
+[data-theme] {
   --theme-text: var(--text);
   --theme-text-muted: var(--text-muted);
   --theme-text-subtle: var(--text-subtle);
@@ -2501,9 +3911,21 @@ body {
   color: var(--text);
 }
 
+/*
+ * Areas that sit **on a surface** rather than on the canvas, and therefore take
+ * their text, border and muted-fill tokens from `--brand-surface-*`.
+ *
+ * `.branding-home-preview__link` is listed so the miniature's link rows resolve
+ * the same tokens a real `.personal-link` / `.link-card` does. Without it the
+ * preview read page-level tokens there, which happened to agree for most
+ * brand-colour pairs and silently disagree for others (a dark surface under a
+ * light canvas, for instance) — which is the worst kind of preview bug: correct
+ * until the day it is not.
+ */
 .app :is(.link-card, .personal-link, .search, .login, .personal__form,
   .admin-category, .admin__form, .users, .branding, .portability,
-  .home-navigation, .home-category-picker, .modal-dialog) {
+  .home-navigation, .home-category-picker, .modal-dialog,
+  .branding-home-preview__link) {
   --text: var(--brand-surface-text, var(--theme-text));
   --text-muted: var(--brand-surface-muted, var(--theme-text-muted));
   --text-subtle: var(--brand-surface-subtle, var(--theme-text-subtle));
@@ -2550,12 +3972,25 @@ body {
   color: var(--brand-on-primary);
   box-shadow: inset 0 0 0 2px var(--brand-on-primary);
 }
-:root[data-brand-colors='true'] .app .category-nav__item:hover { border-bottom-color: var(--brand-focus); }
+/*
+ * The chip hover is defined with the neutral hover pair, which already resolves
+ * through the brand runtime. Only the outline needs to follow `--brand-focus`
+ * here; the previous rule pinned a `border-bottom-color` that the chip no
+ * longer has.
+ */
 :root[data-brand-colors='true'] .app--home .destination-icon { color: var(--brand-ink); background: transparent; }
-:root[data-brand-colors='true'] .app .admin-tabs { background: transparent; }
-:root[data-brand-colors='true'] .app .admin-tabs__tab { color: var(--text-muted); }
-:root[data-brand-colors='true'] .app .admin-tabs__tab[aria-current='true'] {
-  color: var(--brand-ink); border-bottom-color: var(--brand-focus); background: transparent;
+
+/* Brand colours: the current module keeps brand ink in both layouts, and the
+ * underline (top row only) uses the contrast-checked focus colour it used
+ * before the shell was introduced. */
+:root[data-brand-colors='true'] .app .admin-shell__navitem[aria-current='page'] {
+  color: var(--brand-ink);
+}
+
+@media (max-width: 79.99rem) {
+  :root[data-brand-colors='true'] .app .admin-shell__navitem[aria-current='page'] {
+    border-bottom-color: var(--brand-focus);
+  }
 }
 
 .app--login-required { display: flex; flex-direction: column; }
@@ -2583,7 +4018,7 @@ body {
   font: inherit;
   font-size: 0.8rem;
   min-height: 2.75rem;
-  padding: 0.35rem 0.45rem;
+  padding: 0.35rem 0.6rem;
   border: 1px solid transparent;
   border-radius: 0.4rem;
   background: transparent;
@@ -2604,7 +4039,7 @@ body {
 .branding__starting-palettes { display: grid; gap: 0.5rem; margin-bottom: 0.75rem; }
 .branding__starting-palettes > div { display: flex; flex-wrap: wrap; gap: 0.35rem; }
 .branding__starting-palettes button {
-  font: inherit; font-size: 0.8rem; padding: 0.45rem 0.65rem; min-height: 2.5rem;
+  font: inherit; font-size: 0.8rem; padding: 0.45rem 0.75rem; min-height: 2.75rem;
   background: transparent; color: var(--text); border: 1px solid var(--border-input); border-radius: 0.4rem; cursor: pointer;
 }
 .branding__starting-palettes button:hover:not(:disabled) { background: var(--surface-muted); }
@@ -2634,9 +4069,276 @@ body {
 .branding-live-preview__card > span { color: var(--brand-surface-ink); font-size: 0.8rem; }
 .branding-live-preview__card strong { font-size: 0.72rem; font-weight: 600; }
 
+/*
+ * Advanced home colour section (UI-REDESIGN-v3.2 / T2).
+ *
+ * Collapsed by default and built from the same primitives the rest of the branding
+ * form already uses — hairline `--border-input`, `--surface-muted` fills, 0.4rem
+ * radii — so it reads as part of the existing form rather than a new subsystem.
+ */
+.branding-home { margin-top: 1rem; border: 1px solid var(--border); border-radius: 0.6rem; background: var(--surface-muted); }
+
+/*
+ * Preset cards.
+ *
+ * Built from the same primitives as the rest of the branding form — hairline
+ * `--border-input`, `--surface-raised` fill, 0.5rem radius — so a theme picker
+ * does not look like a different product bolted onto the page.
+ *
+ * The selected state is carried by **three** signals, not colour alone: a 2px
+ * brand border, a heavier weight, and a 「当前选择」 text flag. Two of the five
+ * presets are pale enough that a hue-only difference would fail anyone who
+ * cannot separate them.
+ *
+ * Deliberately *not* themed: the cards sit inside the admin and must keep the
+ * admin's own tokens even while the preview next to them shows another theme.
+ */
+.branding-presets { display: grid; gap: 0.6rem; }
+.branding-presets__grid {
+  display: grid; gap: 0.55rem;
+  grid-template-columns: repeat(auto-fill, minmax(min(13rem, 100%), 1fr));
+}
+.branding-preset-card {
+  display: grid; gap: 0.35rem; justify-items: start; text-align: left;
+  padding: 0.6rem 0.65rem 0.7rem;
+  border: 1px solid var(--border-input); border-radius: 0.5rem;
+  background: var(--surface-raised); color: var(--text);
+  font: inherit; cursor: pointer;
+  transition: border-color 160ms ease, background-color 160ms ease;
+}
+.branding-preset-card:hover:not(:disabled) { border-color: var(--border-strong); background: var(--brand-tint); }
+.branding-preset-card:focus-visible { outline: 3px solid var(--text); outline-offset: 2px; }
+.branding-preset-card--selected { border: 2px solid var(--brand-primary); padding: calc(0.6rem - 1px) calc(0.65rem - 1px) calc(0.7rem - 1px); }
+.branding-preset-card__name { font-size: 0.9rem; font-weight: 650; line-height: 1.3; }
+.branding-preset-card--selected .branding-preset-card__name { font-weight: 700; }
+.branding-preset-card__note { font-size: 0.76rem; line-height: 1.45; color: var(--text-muted); }
+
+/*
+ * Name and radio dot on one line (T4.3).
+ *
+ * The dot is the "one choice" signal a border and a text flag cannot give at a
+ * glance: five cards in a row, one of them chosen. It is drawn with a ring and
+ * a filled core rather than colour alone, and the card keeps its 2px brand
+ * border, heavier weight and 「当前选择」 flag — the selected state stays
+ * carried by three independent signals.
+ */
+.branding-preset-card__head {
+  display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 0.5rem;
+}
+.branding-preset-card__dot {
+  position: relative; flex: none; width: 1.05rem; height: 1.05rem;
+  border: 2px solid var(--border-strong); border-radius: 50%;
+}
+.branding-preset-card__dot[data-checked='true'] {
+  border-color: var(--brand-primary);
+}
+.branding-preset-card__dot[data-checked='true']::after {
+  content: ''; position: absolute; inset: 2px; border-radius: 50%; background: var(--brand-primary);
+}
+
+/*
+ * The swatch matching the site's current base is ringed, so the comparison an
+ * administrator actually makes — "this card, against what is live now" — is the
+ * one the thumbnail answers. Purely additive: the two-swatch legend is intact.
+ */
+.branding-preset-card__swatch { position: relative; }
+.branding-preset-card__swatch[data-active='true'] {
+  outline: 2px solid var(--brand-primary);
+  outline-offset: 1px;
+}
+.branding-preset-card__flag {
+  font-size: 0.72rem; font-weight: 650; color: var(--brand-ink);
+  /* Not `color` alone — the flag is text, so it also needs a real contrast
+     guarantee, which `--brand-ink` provides through the shared derivation. */
+}
+
+/*
+ * The thumbnail is a legend of literals, not a mini theme: canvas, a panel in the
+ * preset's own surface and radius, and the accent. The panel carries a hairline
+ * so a theme whose canvas and surface are identical (high contrast) still reads
+ * as a panel rather than a blank square.
+ */
+.branding-preset-card__swatches { display: flex; gap: 0.4rem; }
+.branding-preset-card__swatch {
+  display: block; width: 4.25rem; height: 3rem; padding: 0.3rem;
+  border: 1px solid var(--border); border-radius: 0.3rem;
+}
+.branding-preset-card__panel {
+  display: grid; grid-template-rows: 1fr auto; gap: 0.15rem; height: 100%; padding: 0.25rem;
+  border: 1px solid color-mix(in srgb, currentColor 22%, transparent);
+}
+.branding-preset-card__accent { display: block; width: 60%; height: 0.28rem; border-radius: 999px; }
+.branding-preset-card__line { display: block; width: 85%; height: 0.22rem; border-radius: 999px; opacity: 0.55; }
+.branding-presets__clear { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.75rem; }
+
+.branding-home__summary {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.25rem 0.75rem;
+  padding: 0.7rem 0.9rem; min-height: 2.75rem; cursor: pointer; list-style-position: inside;
+}
+.branding-home__summary:hover { background: color-mix(in srgb, var(--brand-primary) 6%, transparent); }
+.branding-home__summary:focus-visible { outline: 3px solid var(--text); outline-offset: -3px; }
+.branding-home__body { display: grid; gap: 0.85rem; padding: 0.25rem 0.9rem 0.9rem; }
+
+.branding-home__group { display: grid; gap: 0.5rem; margin: 0; padding: 0.75rem 0.85rem;
+  border: 1px solid var(--border-input); border-radius: 0.5rem; background: var(--surface-raised); }
+.branding-home__group .branding__section-title { font-size: 0.9rem; }
+
+/*
+ * Two slots per row once the column is wide enough for a picker, a hex field
+ * and a reset side by side (T4.3): the panel measured ~1,250px tall with one
+ * slot per row, and half of that was scrolling. Below the breakpoint it stays
+ * a single column — a 375px phone cannot fit the three controls in a row.
+ */
+.branding-home__slots { display: grid; gap: 0.5rem; }
+@media (min-width: 64rem) {
+  .branding-home__slots { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 1.25rem; }
+}
+
+.branding-home-slot { display: grid; gap: 0.25rem; }
+.branding-home-slot__hint--invalid { color: var(--danger); }
+
+/*
+ * Contrast warnings are information, not decoration: they sit in the text
+ * colour at a readable size and carry a visible icon, so the state is not
+ * conveyed by colour alone.
+ */
+.branding-home-slot__contrast {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.5rem;
+  margin-top: 0.2rem; padding: 0.35rem 0.5rem; font-size: 0.78rem; line-height: 1.4;
+  color: var(--text); background: var(--surface-muted); border: 1px solid var(--danger); border-radius: 0.4rem;
+}
+.branding-home-slot__suggest {
+  font: inherit; font-size: 0.78rem; padding: 0.2rem 0.6rem; min-height: 2.75rem;
+  color: var(--text); background: var(--surface-raised); border: 1px solid var(--border-input); border-radius: 0.35rem; cursor: pointer;
+}
+.branding-home-slot__suggest:hover:not(:disabled) { background: var(--brand-tint); }
+.branding-home-slot__suggest:focus-visible { outline: 3px solid var(--text); outline-offset: 2px; }
+
+/*
+ * Unsaved / invalid notices.
+ *
+ * Distinct from the decorative hint text: they carry a role, sit on a tinted
+ * surface and use the text colour rather than the muted one, so the state is
+ * carried by wording and weight as well as by hue.
+ */
+.branding-home__notice {
+  margin: 0; padding: 0.5rem 0.65rem; font-size: 0.82rem; line-height: 1.5;
+  color: var(--text); background: var(--surface-raised); border: 1px solid var(--border-input); border-radius: 0.4rem;
+}
+.branding-home__notice--error { border-color: var(--danger); }
+
+.branding-home__note { margin: 0; padding: 0.5rem 0.65rem; font-size: 0.8rem; line-height: 1.5;
+  color: var(--text); background: var(--surface-muted); border: 1px solid var(--border-input); border-radius: 0.4rem; }
+.branding-home__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.75rem; }
+
+/*
+ * The preview.
+ *
+ * `app app--home` on the root is what lets the production T1 rules apply here:
+ * they are written `:root[data-home-<slot>='true'] .app.app--home <target>`, so
+ * the preview participates in the real cascade instead of restating it. Only
+ * layout and the panel background are declared below.
+ */
+.branding-home-preview {
+  /*
+   * The preview root carries `app app--home` so the T1 colour rules apply, but
+   * those classes also bring full-page chrome: a 100rem max-width, `min-height:
+   * 100dvh`, the landing page's padding and auto margins. Only the *colour*
+   * declarations are wanted here, so the box model is reset explicitly — the
+   * cascade that decides the colours is left untouched.
+   *
+   * `min-height: 0` is the load-bearing part: without it the preview reserves a
+   * full viewport of blank space inside a form section.
+   *
+   * Deliberately **no** token remapping here, even though the surrounding
+   * `.branding` panel maps `--text` / `--border` to the surface variants. This
+   * element has `.app`, and `.app` maps those same tokens to the **page**
+   * variants — which is what the real home page uses for everything outside a
+   * link block. T3 re-declared them here as surface values, and T3.1 measured the
+   * consequence: the miniature's panel border came out `#4C555E` where the real
+   * panel's was `rgb(88,114,126)`. Letting `.app` do its own job removes the
+   * duplication *and* the defect. The draft's `--brand-*` values are written
+   * inline by `HomeThemePreview`, and the draft's basis by the scope wrapper.
+   */
+  width: auto;
+  max-width: none;
+  min-height: 0;
+  margin: 0;
+  padding: 0.9rem;
+  background: var(--brand-page-background, var(--surface));
+  border-radius: 0.5rem;
+}
+/*
+ * Carries `data-theme` = the form's draft basis.
+ *
+ * It exists purely to host the token blocks for that basis (see the `[data-theme]`
+ * comment at the top of this file) and the `--theme-*` snapshots the `.app` remap
+ * falls back to. It is a separate element on purpose: those snapshots must live on
+ * an element the `.app` remap does not target, or the two would reference each
+ * other and both would resolve to invalid.
+ *
+ * It renders nothing, so the preview's own geometry is untouched.
+ */
+.branding-home-preview-scope { display: block; }
+
+.branding-home-preview__panel {
+  display: grid; gap: 0.6rem; padding: 0.85rem;
+  background: var(--surface-raised);
+  /*
+   * The real panel's three shape properties, read from the same variables the
+   * page reads. A preview that hard-coded its own radius would show a rounded
+   * theme as square — the exact "mock that disagrees with production" failure
+   * the T1 preview was built to avoid.
+   */
+  border: 1px solid var(--home-panel-border);
+  border-radius: var(--home-panel-radius);
+  box-shadow: var(--home-panel-shadow);
+  /*
+   * Mirrors `.app--home .personal-category`'s brand-tinted border rather than
+   * the plain `.category` one, because for a signed-in administrator the first
+   * panel on the home page *is* the personal one — a miniature showing a
+   * different border tint from the panel directly above it is a visible lie.
+   * The same formula, not a second implementation.
+   */
+  border-color: color-mix(in srgb, var(--brand-primary) 32%, var(--home-panel-border));
+}
+.branding-home-preview__heading { font-size: 1rem; font-weight: 650; line-height: 1.35; }
+.branding-home-preview__links { display: grid; gap: 0.45rem; }
+.branding-home-preview__link {
+  display: flex; align-items: center; gap: 0.55rem; padding: 0.45rem 0.55rem;
+  border: 1px solid transparent; border-radius: var(--home-block-radius); color: inherit; text-decoration: none;
+}
+.branding-home-preview__link:hover { border-color: var(--home-block-hover-border); }
+.branding-home-preview__text { display: grid; gap: 0.05rem; min-width: 0; }
+.branding-home-preview__text .link-card__title { font-size: 0.875rem; font-weight: 600; }
+.branding-home-preview__text .destination-secondary { font-size: 0.7rem; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.branding-home-preview__button { justify-self: start; pointer-events: none; opacity: 1; }
+
+/*
+ * The preview button is `disabled` so it can never submit the surrounding form,
+ * and `.personal__button:disabled` halves its opacity. That reads as "broken"
+ * rather than "not clickable here", and T2 patched it only inside the phone media
+ * query — so the desktop preview showed a ghosted button. Restored at every
+ * width, scoped to this one element: the business buttons keep their real
+ * disabled styling, and no other admin button is touched.
+ */
+.branding-home-preview__button:disabled { opacity: 1; cursor: default; }
+
+@media (max-width: 40rem) {
+  .branding-home__body { padding-inline: 0.65rem; }
+  .branding-home-preview { padding: 0.6rem; }
+  .branding-home-preview__panel { padding: 0.65rem; }
+}
+
 @media (max-width: 40rem) {
   .branding__color-controls { grid-template-columns: 2.75rem minmax(0, 1fr); }
-  .branding__color-reset { grid-column: 2; justify-self: start; min-height: 2.25rem; padding-inline: 0; }
+  /*
+   * The reset button drops below the swatch on a phone — there is no room for
+   * three controls in a row — but it keeps its 44px touch height: it measured
+   * 36px here before T4.3, and a control you must hit to undo a colour is
+   * exactly the kind that cannot be small.
+   */
+  .branding__color-reset { grid-column: 2; justify-self: start; min-height: 2.75rem; padding-inline: 0; }
   .branding-live-preview__cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .branding-live-preview__card:last-child { display: none; }
 }
