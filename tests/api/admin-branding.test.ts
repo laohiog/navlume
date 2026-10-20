@@ -919,3 +919,99 @@ describe('BRP1.1 colors and background assets', () => {
     expect(existsSync(victim)).toBe(true);
   });
 });
+
+describe('home theme config (UI-REDESIGN-v3.2 / T1)', () => {
+  const CONFIG = {
+    version: 1,
+    presetId: 'forest-mist',
+    overrides: { accentBg: '#B45309', accentInk: null, linkTitle: '#7C2D12' },
+  };
+
+  it('starts as null so a fresh site renders every colour automatically', async () => {
+    const body = (await (await send('GET', '/api/public/branding')).json()) as Record<string, unknown>;
+    expect(body['homeThemeConfig']).toBeNull();
+  });
+
+  it('round-trips an explicit configuration through the admin API', async () => {
+    await provision('adminht', 'admin');
+    const cookie = await login('adminht', ADMIN_PASSWORD);
+
+    const saved = await send('PUT', '/api/admin/branding', {
+      cookie,
+      body: settingsPayload({ homeThemeConfig: CONFIG }),
+    });
+    expect(saved.status).toBe(200);
+
+    const admin = (await (await send('GET', '/api/admin/branding', { cookie })).json()) as Record<string, unknown>;
+    expect(admin['homeThemeConfig']).toEqual(CONFIG);
+
+    // The public endpoint carries it too: every visitor needs the saved appearance.
+    const pub = (await (await send('GET', '/api/public/branding')).json()) as Record<string, unknown>;
+    expect(pub['homeThemeConfig']).toEqual(CONFIG);
+
+    expect(settingsRows()[0]?.homeThemeConfig).toBe(JSON.stringify(CONFIG));
+  });
+
+  it('treats an omitted field as unchanged and an explicit null as cleared', async () => {
+    await provision('adminht2', 'admin');
+    const cookie = await login('adminht2', ADMIN_PASSWORD);
+    await send('PUT', '/api/admin/branding', { cookie, body: settingsPayload({ homeThemeConfig: CONFIG }) });
+
+    // Omitted → preserved.
+    await send('PUT', '/api/admin/branding', { cookie, body: settingsPayload({ siteName: 'Renamed' }) });
+    expect(settingsRows()[0]?.homeThemeConfig).toBe(JSON.stringify(CONFIG));
+
+    // Explicit null → cleared back to "everything automatic".
+    const cleared = await send('PUT', '/api/admin/branding', {
+      cookie,
+      body: settingsPayload({ homeThemeConfig: null }),
+    });
+    expect(cleared.status).toBe(200);
+    expect(settingsRows()[0]?.homeThemeConfig).toBeNull();
+  });
+
+  it('rejects a document that violates the whitelist instead of storing it', async () => {
+    await provision('adminht3', 'admin');
+    const cookie = await login('adminht3', ADMIN_PASSWORD);
+
+    const rejected: unknown[] = [
+      { version: 2, overrides: {} },
+      { version: 1, overrides: { evil: '#FFFFFF' } },
+      { version: 1, overrides: { accentBg: 'red' } },
+      { version: 1, overrides: { accentBg: 'url(https://evil.test/x)' } },
+      { version: 1, overrides: { accentBg: 'var(--x)' } },
+      { version: 1, overrides: 'not-an-object' },
+      { version: 1, overrides: {}, injected: true },
+      { version: 1, presetId: 'my-own-theme', overrides: {} },
+      'a-string',
+      42,
+    ];
+
+    for (const homeThemeConfig of rejected) {
+      const response = await send('PUT', '/api/admin/branding', {
+        cookie,
+        body: settingsPayload({ homeThemeConfig }),
+      });
+      expect(response.status, JSON.stringify(homeThemeConfig)).toBe(400);
+    }
+
+    expect(settingsRows()).toHaveLength(0);
+  });
+
+  it('requires admin authorization like every other branding write', async () => {
+    await provision('userht', 'user');
+    const userCookie = await login('userht', USER_PASSWORD);
+
+    const forbidden = await send('PUT', '/api/admin/branding', {
+      cookie: userCookie,
+      body: settingsPayload({ homeThemeConfig: CONFIG }),
+    });
+    expect(forbidden.status).toBe(403);
+
+    const unauthenticated = await send('PUT', '/api/admin/branding', {
+      body: settingsPayload({ homeThemeConfig: CONFIG }),
+    });
+    expect(unauthenticated.status).toBe(401);
+    expect(settingsRows()).toHaveLength(0);
+  });
+});

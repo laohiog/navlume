@@ -5,6 +5,7 @@ import {
   filterCategoriesByQuery,
   linkMatchesQuery,
   normalizeSearchQuery,
+  splitHighlight,
 } from '../../src/client/navigation-search.js';
 
 /** A personal-style link: has `normalizedUrl`, no `description`. */
@@ -193,5 +194,151 @@ describe('countMatchingLinks', () => {
   it('counts only public links when only public data is supplied', () => {
     expect(countMatchingLinks([PUBLIC], 'supplier')).toBe(0);
     expect(countMatchingLinks([PUBLIC], 'example domain')).toBe(1);
+  });
+});
+
+/**
+ * T4.6 — the highlight projection.
+ *
+ * These assert only what the row renders. Filtering is covered above and must not
+ * change: `splitHighlight` never decides whether a link is a result.
+ */
+describe('splitHighlight', () => {
+  /** Rebuild the original text from the segments, ignoring the hit flags. */
+  const joined = (segments: { text: string }[]) => segments.map((segment) => segment.text).join('');
+
+  it('returns one untouched segment for an empty query', () => {
+    expect(splitHighlight('Notion', '')).toEqual([{ text: 'Notion', hit: false }]);
+    expect(splitHighlight('Notion', '   ')).toEqual([{ text: 'Notion', hit: false }]);
+  });
+
+  it('wraps only the matching run and keeps the rest intact', () => {
+    expect(splitHighlight('Notion', 'no')).toEqual([
+      { text: 'No', hit: true },
+      { text: 'tion', hit: false },
+    ]);
+  });
+
+  it('matches case-insensitively without changing the original case', () => {
+    const segments = splitHighlight('Snowflake', 'SNO');
+    expect(segments).toEqual([
+      { text: 'Sno', hit: true },
+      { text: 'wflake', hit: false },
+    ]);
+    expect(joined(segments)).toBe('Snowflake');
+  });
+
+  it('uses the same normalization as the filter, so " NO " marks what "no" marked', () => {
+    expect(splitHighlight('Notion', ' NO ')).toEqual(splitHighlight('Notion', 'no'));
+  });
+
+  it('handles several matches in one field', () => {
+    expect(splitHighlight('notion notion', 'no')).toEqual([
+      { text: 'no', hit: true },
+      { text: 'tion ', hit: false },
+      { text: 'no', hit: true },
+      { text: 'tion', hit: false },
+    ]);
+  });
+
+  it('treats regular-expression characters as literal text', () => {
+    expect(splitHighlight('a.b', '.')).toEqual([
+      { text: 'a', hit: false },
+      { text: '.', hit: true },
+      { text: 'b', hit: false },
+    ]);
+    // A query of ".*" must not become a wildcard that marks everything.
+    expect(splitHighlight('abc', '.*')).toEqual([{ text: 'abc', hit: false }]);
+    expect(splitHighlight('a(b)c', '(')).toEqual([
+      { text: 'a', hit: false },
+      { text: '(', hit: true },
+      { text: 'b)c', hit: false },
+    ]);
+  });
+
+  it('handles CJK without splitting characters', () => {
+    expect(splitHighlight('常用工具', '工具')).toEqual([
+      { text: '常用', hit: false },
+      { text: '工具', hit: true },
+    ]);
+  });
+
+  it('returns something for a non-matching query and never loses text', () => {
+    const segments = splitHighlight('Linear', 'zzz');
+    expect(segments).toEqual([{ text: 'Linear', hit: false }]);
+  });
+
+  it('reconstructs long mixed text exactly at every query', () => {
+    const text = '  AWS 控制台 · us-east-1.console.aws.amazon.com  ';
+    for (const query of ['', 'aws', ' AWS ', 'console', 'zzz', '.', '·']) {
+      expect(joined(splitHighlight(text, query))).toBe(text);
+    }
+  });
+
+  it('returns no segments for empty text', () => {
+    expect(splitHighlight('', 'no')).toEqual([]);
+  });
+});
+
+/**
+ * T4.6 review fix — the highlight must use the same case mapping as the filter.
+ *
+ * The filter is `field.toLowerCase().includes(query.toLowerCase())`. A
+ * case-insensitive regular expression is *not* the same predicate: `/i/i` misses
+ * `İ`, `/k/i` misses `K`, and `/ß/i` misses `ẞ`, while `toLowerCase()` matches all
+ * three. These cases pin the projection to the filter's semantics.
+ */
+describe('splitHighlight — Unicode case mapping', () => {
+  const joined = (segments: { text: string }[]) => segments.map((segment) => segment.text).join('');
+
+  it.each<[string, string, string]>([
+    ['İstanbul', 'i', 'İ'],
+    ['İstanbul', 'İ', 'İ'],
+    ['Kelvin', 'k', 'K'],
+    ['ẞ', 'ß', 'ẞ'],
+  ])('marks %s for query %s, which the filter also accepts', (text, query, expected) => {
+    // The filter is the authority: it matched, so the field has to be marked.
+    expect(linkMatchesQuery({ title: text, url: 'https://example.com' }, normalizeSearchQuery(query))).toBe(true);
+
+    const segments = splitHighlight(text, query);
+    expect(segments.filter((segment) => segment.hit).map((segment) => segment.text)).toEqual([expected]);
+    expect(joined(segments)).toBe(text);
+  });
+
+  it('marks the whole original character when lower-casing expands it', () => {
+    // `İ` lower-cases to `i` + a combining dot: one character, two code units.
+    expect(splitHighlight('İstanbul', 'i')).toEqual([
+      { text: 'İ', hit: true },
+      { text: 'stanbul', hit: false },
+    ]);
+  });
+
+  it('agrees with the filter when contextual casing changes the character instead', () => {
+    // Greek final sigma: 'ΟΔΟΣ'.toLowerCase() is 'οδος', so 'σ' does not match.
+    expect(linkMatchesQuery({ title: 'ΟΔΟΣ', url: 'https://example.com' }, normalizeSearchQuery('σ'))).toBe(false);
+    expect(splitHighlight('ΟΔΟΣ', 'σ').some((segment) => segment.hit)).toBe(false);
+  });
+
+  it('keeps segments ordered, non-overlapping and gap-free across mixed text', () => {
+    const text = 'İstanbul Kelvin ẞ Notion';
+
+    for (const query of ['i', 'İ', 'k', 'ß', 'no', 'stanbul', ' ', 'zzz']) {
+      const segments = splitHighlight(text, query);
+      expect(joined(segments)).toBe(text);
+
+      let offset = 0;
+      for (const segment of segments) {
+        expect(text.slice(offset, offset + segment.text.length)).toBe(segment.text);
+        offset += segment.text.length;
+      }
+      expect(offset).toBe(text.length);
+    }
+  });
+
+  it('still handles the plain ASCII case', () => {
+    expect(splitHighlight('Notion', 'no')).toEqual([
+      { text: 'No', hit: true },
+      { text: 'tion', hit: false },
+    ]);
   });
 });

@@ -106,6 +106,7 @@ function publicProps(overrides: Partial<PublicNavigationViewProps> = {}): Public
       primaryColor: null,
       defaultTheme: 'light',
       footerText: null,
+      homeThemeConfig: null,
     },
     search: { query: '', onChange: vi.fn(), showNoResults: false },
     onLogout: vi.fn(),

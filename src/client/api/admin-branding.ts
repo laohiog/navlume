@@ -9,6 +9,52 @@
  * convenience, not permission.
  */
 
+/**
+ * The seven independently overridable home-page colour slots.
+ *
+ * Declared locally rather than imported from the server module: the client must
+ * not import server code. Mirrors `src/server/home-theme-config.ts`, which owns
+ * the authoritative validation.
+ */
+export const HOME_THEME_COLOR_KEYS = [
+  'accentBg',
+  'accentInk',
+  'linkTitle',
+  'linkMeta',
+  'iconInk',
+  'iconBg',
+  'categoryTitle',
+] as const;
+
+export type HomeThemeColorKey = (typeof HOME_THEME_COLOR_KEYS)[number];
+
+/** The seven theme presets this build can identify. */
+export const HOME_THEME_PRESET_IDS = [
+  'nordic-frost',
+  'warm-paper',
+  'deep-sea',
+  'forest-mist',
+  'high-contrast',
+] as const;
+
+export type HomeThemePresetId = (typeof HOME_THEME_PRESET_IDS)[number];
+
+/**
+ * Explicit per-slot overrides.
+ *
+ * `null` means "use the automatic contrast-derived colour for this slot"; an
+ * absent key behaves the same way. A string is always honoured verbatim — the
+ * renderer never substitutes black or white for an explicit choice.
+ */
+export type HomeThemeOverrides = Partial<Record<HomeThemeColorKey, string | null>>;
+
+/** The validated home-theme document. `null` means "everything automatic". */
+export interface HomeThemeConfig {
+  version: 1;
+  presetId?: HomeThemePresetId;
+  overrides: HomeThemeOverrides;
+}
+
 /** Branding settings as returned by the admin read/write endpoints. */
 export interface BrandingSettings {
   siteName: string;
@@ -22,7 +68,25 @@ export interface BrandingSettings {
   defaultTheme: 'light' | 'dark';
   footerText: string | null;
   accessMode: 'public' | 'login_required';
+  /**
+   * Explicit home-page appearance overrides.
+   *
+   * `null` is the state of a site that has never customised its home page, and
+   * means every colour comes from the automatic derivation.
+   */
+  homeThemeConfig: HomeThemeConfig | null;
 }
+
+/**
+ * The write shape.
+ *
+ * `homeThemeConfig` follows the same tri-state convention as the other optional
+ * fields: `undefined` leaves it untouched, `null` clears it, an object replaces
+ * it.
+ */
+export type BrandingUpdate = Omit<BrandingSettings, 'homeThemeConfig'> & {
+  homeThemeConfig?: HomeThemeConfig | null;
+};
 
 /**
  * Public branding as returned by `GET /api/public/branding`.
@@ -44,6 +108,7 @@ export const FALLBACK_BRANDING: PublicBranding = {
   backgroundImagePath: null,
   defaultTheme: 'light',
   footerText: null,
+  homeThemeConfig: null,
 };
 
 export const PUBLIC_BRANDING_ENDPOINT = '/api/public/branding';

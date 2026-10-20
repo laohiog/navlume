@@ -252,6 +252,9 @@ describe('site export document', () => {
       'access_mode',
       'default_theme',
       'footer_text',
+      // T1: exported so a home-page appearance survives export/import. It is a
+      // JSON document, not an asset path, so it carries no instance-local risk.
+      'home_theme_config',
       'page_background_color',
       'primary_color',
       'site_name',
@@ -1697,5 +1700,88 @@ describe('round trip', () => {
     expect(strip(reexported)).toBe(strip(exported));
     // Ids are re-created, so source ids are not required to be stable.
     expect((reexported as { public_categories: unknown[] }).public_categories).toHaveLength(1);
+  });
+});
+
+describe('home theme config portability (UI-REDESIGN-v3.2 / T1)', () => {
+  const CONFIG_JSON = JSON.stringify({
+    version: 1,
+    presetId: 'deep-sea',
+    overrides: { accentBg: '#0A1929', accentInk: null, linkTitle: '#334455' },
+  });
+
+  it('round-trips an explicit configuration byte-identically', async () => {
+    const { adminCookie } = await seed();
+
+    // Seed through the settings API so the stored value is canonical.
+    const current = (await (
+      await send('GET', '/api/admin/branding', { cookie: adminCookie })
+    ).json()) as Record<string, unknown>;
+    await send('PUT', '/api/admin/branding', {
+      cookie: adminCookie,
+      body: { ...(current as Record<string, unknown>), homeThemeConfig: JSON.parse(CONFIG_JSON) },
+    });
+
+    const first = (await (
+      await send('GET', '/api/admin/data-export/site', { cookie: adminCookie })
+    ).json()) as { site_settings: Record<string, unknown> };
+    expect(first.site_settings['home_theme_config']).toBe(CONFIG_JSON);
+
+    // Import it straight back.
+    await send('POST', '/api/admin/data-import/site/apply', {
+      cookie: adminCookie,
+      body: { confirm: true, document: first },
+    });
+
+    const second = (await (
+      await send('GET', '/api/admin/data-export/site', { cookie: adminCookie })
+    ).json()) as { site_settings: Record<string, unknown> };
+    expect(second.site_settings['home_theme_config']).toBe(CONFIG_JSON);
+  });
+
+  it('loads a document exported before the field existed', async () => {
+    const { adminCookie } = await seed();
+
+    const document = (await (
+      await send('GET', '/api/admin/data-export/site', { cookie: adminCookie })
+    ).json()) as Record<string, unknown>;
+
+    // Exactly what an older build would have written: no home_theme_config key.
+    delete (document['site_settings'] as Record<string, unknown>)['home_theme_config'];
+    expect('home_theme_config' in (document['site_settings'] as object)).toBe(false);
+
+    const response = await send('POST', '/api/admin/data-import/site/apply', {
+      cookie: adminCookie,
+      body: { confirm: true, document },
+    });
+    expect(response.status).toBe(200);
+
+    // Absent behaves exactly like an explicit null: everything automatic.
+    const reexported = (await (
+      await send('GET', '/api/admin/data-export/site', { cookie: adminCookie })
+    ).json()) as { site_settings: Record<string, unknown> };
+    expect(reexported.site_settings['home_theme_config']).toBeNull();
+  });
+
+  it('rejects an imported document whose configuration violates the whitelist', async () => {
+    const { adminCookie } = await seed();
+
+    const document = (await (
+      await send('GET', '/api/admin/data-export/site', { cookie: adminCookie })
+    ).json()) as Record<string, unknown>;
+
+    for (const bad of [
+      JSON.stringify({ version: 1, overrides: { evil: '#FFFFFF' } }),
+      JSON.stringify({ version: 1, overrides: { accentBg: 'red' } }),
+      JSON.stringify({ version: 2, overrides: {} }),
+      '{not json',
+    ]) {
+      (document['site_settings'] as Record<string, unknown>)['home_theme_config'] = bad;
+      const response = await send('POST', '/api/admin/data-import/site/apply', {
+        cookie: adminCookie,
+        body: { confirm: true, document },
+      });
+      expect(response.status, bad).toBe(400);
+    }
   });
 });

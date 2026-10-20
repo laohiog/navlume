@@ -1,9 +1,9 @@
-import { useRef, useState, type ReactNode } from 'react';
+import { Fragment, useRef, useState, type ReactNode, type RefObject } from 'react';
 
 import { FooterContent } from './FooterContent.js';
 import { HomeNavigation } from './HomeNavigation.js';
 import { LoginForm } from './LoginForm.js';
-import { filterCategoriesByQuery } from './navigation-search.js';
+import { filterCategoriesByQuery, splitHighlight } from './navigation-search.js';
 import type { PublicBranding } from './api/admin-branding.js';
 import type {
   PublicNavigation,
@@ -76,7 +76,9 @@ export interface PublicNavigationViewProps {
     onChange: (query: string) => void;
     /** True only once a resolved non-empty query matched nothing anywhere. */
     showNoResults: boolean;
+    resultCount?: number | null;
   };
+  onRetry?: () => void;
   onLogout: () => void;
   onShowLogin: () => void;
   onHideLogin: () => void;
@@ -92,19 +94,22 @@ already ignores it (see `isEditableTarget`) and pasting here behaves normally.
 function SearchBar({
   query,
   onChange,
+  inputRef,
 }: {
   query: string;
   onChange: (query: string) => void;
+  inputRef: RefObject<HTMLInputElement | null>;
 }) {
   return (
     <div className="search">
       <label className="search__field">
         <span className="search__label">搜索网址</span>
         <input
+          ref={inputRef}
           className="search__input"
           type="search"
           name="search"
-          placeholder="输入名称或网址"
+          placeholder="输入名称、网址或分类名…"
           autoComplete="off"
           value={query}
           onChange={(event) => onChange(event.target.value)}
@@ -126,6 +131,8 @@ export function DestinationIcon({ title, iconUrl }: { title: string; iconUrl: st
         <img
           src={iconUrl}
           alt=""
+          width={44}
+          height={44}
           loading="lazy"
           referrerPolicy="no-referrer"
           onError={() => setFailedUrl(iconUrl)}
@@ -136,12 +143,41 @@ export function DestinationIcon({ title, iconUrl }: { title: string; iconUrl: st
 }
 
 /** Display only: the destination itself always uses the original validated href. */
-export function DestinationHost({ url }: { url: string }) {
+export function DestinationHost({ url, query = '' }: { url: string; query?: string }) {
+  let host: string;
+
   try {
-    return new URL(url).hostname;
+    host = new URL(url).hostname;
   } catch {
     return '';
   }
+
+  return query.length === 0 ? host : <SearchHighlight text={host} query={query} />;
+}
+
+/**
+ * Render `text` with every case-insensitive match of `query` wrapped in `<mark>`.
+ *
+ * Purely presentational: the visible characters are the ones the caller passed,
+ * only their wrapping changes. Exported because the personal section highlights
+ * with the same projection — a second implementation there could disagree with
+ * the filter that selected the row.
+ *
+ * An empty query renders the text unchanged and produces no `<mark>`, so
+ * clearing the search cannot leave a stale highlight behind.
+ */
+export function SearchHighlight({ text, query }: { text: string; query: string }) {
+  const segments = splitHighlight(text, query);
+
+  return (
+    <>
+      {segments.map((segment, index) => (
+        segment.hit
+          ? <mark key={index}>{segment.text}</mark>
+          : <Fragment key={index}>{segment.text}</Fragment>
+      ))}
+    </>
+  );
 }
 
 /** Category jumps keep the existing home/admin hash routing untouched. */
@@ -176,33 +212,105 @@ export function CategoryNavigation({
   );
 }
 
-/** A single navigation link rendered as a native anchor. */
-function LinkCard({ link }: { link: PublicNavigationLink }) {
+/**
+ * A single public link, rendered as a T4.4 (Beacon A) directory row.
+ *
+ * Row anatomy is `icon · name · description · host`:
+ *
+ * - the **name** is the primary text;
+ * - the **description** sits on the second line, directly visible — a description
+ *   is what a human wrote to say what a link is *for*, and hiding it behind a
+ *   tooltip made the directory far less useful than the data already allowed;
+ * - the **host** is flush right in a tabular monospace, because a hostname is
+ *   data, not prose, and setting it that way lets the eye compare destinations
+ *   down the right-hand edge without reading them.
+ *
+ * A link with no description falls back to the host as its secondary line, so
+ * every row still carries the same amount of information and the two lines stay
+ * aligned across the column.
+ *
+ * The description is rendered as its own element rather than being folded into
+ * the anchor's `title`: the tooltip is unreachable on touch and invisible to a
+ * screenshot, and the brief requires the description to be *seen*.
+ */
+function LinkCard({ link, query }: { link: PublicNavigationLink; query: string }) {
+  const description = link.description !== null && link.description.length > 0
+    ? link.description
+    : null;
+
   return (
     <li className="link-card">
-      <a className="link-card__anchor" href={link.url} title={link.title} target="_blank" rel="noopener noreferrer">
+      <a
+        className="link-card__anchor"
+        href={link.url}
+        title={link.title}
+        target="_blank"
+        rel="noopener noreferrer"
+      >
         <DestinationIcon title={link.title} iconUrl={link.iconUrl} />
         <span className="destination-copy">
-          <span className="link-card__title">{link.title}</span>
-          <span className={link.description ? 'link-card__description' : 'destination-secondary'}>
-            {link.description || <DestinationHost url={link.url} />}
+          <span className="link-card__title">
+            <SearchHighlight text={link.title} query={query} />
+          </span>
+          {/*
+            The second line is the **secondary information**: the description
+            when there is one, otherwise the host. A link with no description
+            therefore still carries its destination, and every row has the same
+            two-line shape.
+          */}
+          <span className={description === null ? 'destination-secondary' : 'link-card__description'}>
+            {description === null
+              ? <DestinationHost url={link.url} query={query} />
+              : <SearchHighlight text={description} query={query} />}
           </span>
         </span>
+        {/*
+          The right-hand host column, rendered **only** when the second line is
+          already the description. Otherwise the host would appear twice in the
+          same row — once under the name and once at the right edge — and the
+          host is already the secondary line in that case.
+          *
+          * This is also what makes the phone layout safe: the right column can
+          * be dropped there, and a link with no description still shows its
+          * destination on the second line.
+          *
+          * `aria-hidden` because the host restates the link's own URL, which
+          * the anchor already exposes; reading it twice is noise.
+          */}
+        {description === null ? null : (
+          <span className="destination-secondary link-card__host" aria-hidden="true">
+            <DestinationHost url={link.url} query={query} />
+          </span>
+        )}
       </a>
     </li>
   );
 }
 
-/** One public category with its visible links. */
-function CategorySection({ category }: { category: PublicNavigationCategory }) {
+/**
+ * One public category with its visible links.
+ *
+ * B2 structure: the heading is a **slot** inside a bordered panel rather than a
+ * free-standing label, and the link count is rendered next to the name.
+ *
+ * The count is derived from `category.links.length` — the same array that is
+ * rendered immediately below — so the number can never drift from what the
+ * panel actually shows. It is `aria-hidden` because the heading's accessible
+ * name is used as the panel's label; announcing "常用工具 60" would otherwise
+ * be the only way a screen reader learns the category size.
+ */
+function CategorySection({ category, query }: { category: PublicNavigationCategory; query: string }) {
   return (
     <section className="category" aria-labelledby={`category-${category.id}`}>
-      <h3 className="category__title" id={`category-${category.id}`} tabIndex={-1} data-home-category="public">
-        {category.name}
-      </h3>
+      <div className="category__head">
+        <h3 className="category__title" id={`category-${category.id}`} tabIndex={-1} data-home-category="public">
+          <span className="category__name">{category.name}</span>
+          <span className="category__count" aria-hidden="true">{category.links.length}</span>
+        </h3>
+      </div>
       <ul className="link-list">
         {category.links.map((link) => (
-          <LinkCard key={link.id} link={link} />
+          <LinkCard key={link.id} link={link} query={query} />
         ))}
       </ul>
     </section>
@@ -294,7 +402,7 @@ export function BrandHeader({ branding }: { branding: PublicBranding }) {
   return (
     <div className="site-header__brand">
       {branding.logoPath !== null ? (
-        <img className="site-header__logo" src={branding.logoPath} alt="" />
+        <img className="site-header__logo" src={branding.logoPath} alt="" width={40} height={40} />
       ) : null}
       <div className="site-header__brand-text">
         <h1 className="site-header__name">{branding.siteName}</h1>
@@ -332,8 +440,10 @@ export function PublicNavigationView({
   onLogout,
   onShowLogin,
   onHideLogin,
+  onRetry,
 }: PublicNavigationViewProps) {
   const contentRef = useRef<HTMLElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const isAuthenticated = session.username !== null;
 
   // login_required and no valid session: show the login screen only.
@@ -345,7 +455,7 @@ export function PublicNavigationView({
         <header className="site-header">
           <BrandHeader branding={branding} />
         </header>
-        <main className="content">
+        <main className="content" id="main-content" tabIndex={-1}>
           <LoginForm
             title="请登录"
             description="此站点的公共导航需要登录后查看。"
@@ -383,9 +493,12 @@ export function PublicNavigationView({
       ) : null}
 
       {state.status === 'error' ? (
+        <div>
         <p className="status status--error" role="alert">
           公共导航暂时无法加载，请稍后重试。
         </p>
+        {onRetry ? <button className="personal__button" type="button" onClick={onRetry}>重试加载公共导航</button> : null}
+        </div>
       ) : null}
 
       <CategoryNavigation
@@ -396,7 +509,7 @@ export function PublicNavigationView({
 
       <div className="public-navigation__categories">
         {visibleCategories?.map((category) => (
-          <CategorySection key={category.id} category={category} />
+          <CategorySection key={category.id} category={category} query={search.query} />
         ))}
       </div>
     </section>
@@ -420,7 +533,7 @@ export function PublicNavigationView({
         </div>
       </header>
 
-      <main className="content" ref={contentRef} tabIndex={-1} aria-label="导航首页">
+      <main className="content" id="main-content" ref={contentRef} tabIndex={-1} aria-label="导航首页">
         {!isAuthenticated && isLoginVisible ? (
           <LoginForm
             isSubmitting={login.isSubmitting}
@@ -433,11 +546,17 @@ export function PublicNavigationView({
           Search sits above the navigation so users do not need to know whether a
           link is personal or public before searching; it spans both sections.
         */}
-        <SearchBar query={search.query} onChange={search.onChange} />
+        <SearchBar query={search.query} onChange={search.onChange} inputRef={searchInputRef} />
+        <p className="search__count" aria-live="polite" aria-atomic="true">
+          {search.resultCount != null ? `找到 ${search.resultCount} 个网址` : search.showNoResults ? '找到 0 个网址' : ''}
+        </p>
         {search.showNoResults ? (
-          <p className="status" role="status">
-            没有找到匹配的网址
-          </p>
+          <div className="search__empty">
+            <p className="status">没有找到匹配的网址。试试域名或分类名。</p>
+            <button className="personal__button" type="button" onClick={() => {
+              search.onChange(''); searchInputRef.current?.focus();
+            }}>清空搜索</button>
+          </div>
         ) : null}
 
         {/* Personal navigation is rendered before public navigation. */}

@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { ConfirmDialog } from './ModalDialog.js';
+import { useConfirmation } from './use-confirmation.js';
 
 import { ADMIN_USERS_PAGE_SIZE, type AdminUser, type AdminUserMutationOutcome } from './api/admin-users.js';
 
@@ -306,6 +308,7 @@ export function AdminUsersView({
 }: AdminUsersViewProps) {
   const [creating, setCreating] = useState(false);
   const [resettingUserId, setResettingUserId] = useState<string | null>(null);
+  const confirmation = useConfirmation();
 
   if (state.status === 'absent') {
     return null;
@@ -375,6 +378,7 @@ export function AdminUsersView({
     <section className="users" aria-labelledby="users-title">
       {header}
 
+      <ConfirmDialog request={confirmation.request} onDismiss={confirmation.dismiss} />
       {errorMessage !== null && errorMessage.length > 0 ? (
         <p className="users__error" role="alert">
           {errorMessage}
@@ -423,9 +427,9 @@ export function AdminUsersView({
                 // Deletion is irreversible: require explicit confirmation naming
                 // the account.
                 const label = user.username ?? user.name;
-                if (window.confirm(`确定删除用户「${label}」（${user.email}）吗？此操作不可恢复。`)) {
-                  void actions.deleteUser(user.id);
-                }
+                confirmation.confirm({ title: '删除用户', actionLabel: '删除用户',
+                  message: `确定删除用户「${label}」（${user.email}）吗？此操作不可恢复。`,
+                  onConfirm: () => actions.deleteUser(user.id) });
               }}
             />
           ))}

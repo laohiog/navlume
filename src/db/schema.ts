@@ -50,6 +50,20 @@ export const siteSettings = sqliteTable('site_settings', {
   accessMode: text('access_mode', { enum: ['public', 'login_required'] })
     .notNull()
     .default('public'),
+  /**
+   * Versioned, strictly whitelisted home-page theme configuration, stored as a
+   * single JSON document (`src/server/home-theme-config.ts` owns the contract).
+   *
+   * One column rather than seven: the product has no query, filter or report by
+   * colour, so SQL-queryability would buy nothing, while seven separate columns
+   * would multiply the schema, import/export and test surface on every future
+   * appearance tweak.
+   *
+   * `NULL` is meaningful and is the backward-compatible default: it means "no
+   * explicit override", so every home-page colour falls back to the automatic
+   * contrast-derived value — exactly today's behaviour.
+   */
+  homeThemeConfig: text('home_theme_config'),
   ...timestamps(),
 });
 
