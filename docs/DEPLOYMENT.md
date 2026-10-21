@@ -1,7 +1,7 @@
-# Navlume v0.2.0 Deployment
+# Navlume v0.2.1 Deployment
 
 Release availability and attachments are listed on the
-[v0.2.0 release page](https://github.com/laohiog/navlume/releases/tag/v0.2.0).
+[v0.2.1 release page](https://github.com/laohiog/navlume/releases/tag/v0.2.1).
 The documentation commit and annotated tag object are recorded separately from
 the runtime source in `RELEASE-IDENTITY.json`. Documentation does not require an image rebuild.
 
@@ -17,19 +17,26 @@ The default prebuilt image in the current templates is
 running containers update only after an explicit pull and recreation. Keep a
 verified immutable Digest for pinned deployments and compatible rollback.
 
-The repository templates keep `latest`. The v0.2.0 release attachments instead pin
+The repository templates keep `latest`. The v0.2.1 release attachments instead pin
 the verified Digest in `default.env.install.example` and `compose.lan.yml`, so a
 Digest-pinned installation does not follow `latest`; switching it to follow stable
 releases is an explicit edit that keeps the project, data volume, secret and Origin.
 Publishing a GitHub Release does not promote `latest`.
 
-The v0.2.0 release attachments are the current set. Their Linux AMD64 runtime
-source is `bf5de8ceb2bba07513c23ff5ac440468e76de0e1`, with immutable image
-`ghcr.io/laohiog/navlume@sha256:9a0bcedf9ae803d0ef2ec6d7b06e246bb217e8088ce47f44ee6ca95b0091cca2`
-for fixed v0.2.0 installations. Its OCI revision remains the runtime source,
+The v0.2.1 release attachments are the current set. Their Linux AMD64 runtime
+source is `4619349e2cd044bd270cbc7c5c9e1f0c40967d19`, with immutable image
+`ghcr.io/laohiog/navlume@sha256:69556b2a7863d3225536e1df9d6c8aff05eb53490216c94fa8721912e3f20a68`
+for fixed v0.2.1 installations. Its OCI revision remains the runtime source,
 not the documentation commit. `RELEASE-IDENTITY.json` distinguishes
 the runtime source, documentation commit, intended tag and immutable image.
 Source builds identify their own actual revision.
+
+The v0.2.0 release attachments remain unchanged and are the supported rollback
+target for v0.2.1. Their runtime source is
+`bf5de8ceb2bba07513c23ff5ac440468e76de0e1`, with immutable image
+`ghcr.io/laohiog/navlume@sha256:9a0bcedf9ae803d0ef2ec6d7b06e246bb217e8088ce47f44ee6ca95b0091cca2`.
+v0.2.1 adds no API, authentication, dependency or database-migration changes, so a
+rollback only swaps the image.
 
 The v0.1.3 release attachments remain unchanged. Their runtime source is
 `361aaa6439ba16e3579d097629ac75fe2df4fc91`, with immutable image
@@ -240,6 +247,15 @@ docker compose stop             # stop (sends SIGTERM; database is closed cleanl
 docker compose start            # start again
 docker compose down             # stop and remove the container
 ```
+
+### Prebuilt image upgrade from v0.2.0
+
+v0.2.1 changes client assets and accessibility markup only. It adds no API,
+authentication, dependency or database-migration changes, so the upgrade is an
+image swap on the existing project, data volume, secret and Origin (INSTALL §6).
+The isolated container upgrade was not re-run for this patch; the basis is that
+the schema is identical to v0.2.0. Roll back to the v0.2.0 Digest above without
+restoring a backup.
 
 ### Prebuilt image upgrade from v0.1.3
 

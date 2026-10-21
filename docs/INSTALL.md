@@ -4,7 +4,7 @@
 稳定发行别名，会随后续稳定发行推进；不会自动更新已经运行的容器。手动更新见第 6 节。
 **发行页附件不使用该别名**：它们固定本版 Digest，不跟随 `latest`，两者不要混用。
 
-[v0.2.0 发行页面](https://github.com/laohiog/navlume/releases/tag/v0.2.0) 提供与本版
+[v0.2.1 发行页面](https://github.com/laohiog/navlume/releases/tag/v0.2.1) 提供与本版
 配套的附件。[v0.1.3 发行页面](https://github.com/laohiog/navlume/releases/tag/v0.1.3)
 的历史附件与源码压缩包继续固定 v0.1.3 Digest，没有被本版修改。需要固定版本时使用
 对应版本的附件；运行源码、文档提交与 Tag 身份见该版 `RELEASE-IDENTITY.json`。
@@ -15,23 +15,29 @@
 
 本文保留标准 HTTPS 与显式局域网 HTTP 两种安装方式；**仓库模板**的默认镜像为 `latest`。
 公开源码：[laohiog/navlume](https://github.com/laohiog/navlume)。
-**v0.2.0 不可变身份（用于固定部署与回退）：** 已验收镜像的实际源码为
-`bf5de8ceb2bba07513c23ff5ac440468e76de0e1`，
-实际 SHA Tag 为 `sha-bf5de8ceb2bba07513c23ff5ac440468e76de0e1`。发行文档提交
+**v0.2.1 不可变身份（当前版本，用于固定部署）：** 已验收镜像的实际源码为
+`4619349e2cd044bd270cbc7c5c9e1f0c40967d19`，
+实际 SHA Tag 为 `sha-4619349e2cd044bd270cbc7c5c9e1f0c40967d19`。发行文档提交
 与该运行源码不同；不能用文档提交替代 OCI revision，也不因文档更新重建镜像。
 完整身份见附件 `RELEASE-IDENTITY.json`。固定 Registry 镜像引用为：
 
 ```text
-ghcr.io/laohiog/navlume@sha256:9a0bcedf9ae803d0ef2ec6d7b06e246bb217e8088ce47f44ee6ca95b0091cca2
+ghcr.io/laohiog/navlume@sha256:69556b2a7863d3225536e1df9d6c8aff05eb53490216c94fa8721912e3f20a68
 ```
 
-v0.2.0 完成全站界面与交互改版：首页双密度目录、后台 196px 侧栏（窄屏保留共享页头
-与顶部模块导航）、5 套首页主题预设与高级颜色槽位，并增加搜索命中高亮与 `/` 聚焦
-搜索框。新增迁移 `0004` 只给站点设置加一个可空列，启动时自动应用；没有 API、Auth
-或依赖变更，安装架构与两种安装模式保持不变。
+v0.2.1 是 v0.2.0 之后的补丁版本，修复最终无障碍审计的四项问题：后台重复标题语义、
+工具栏 DOM 与视觉顺序、用户操作按钮的可访问名称、首页 Tagline 对比度。相对 v0.2.0，
+本版没有新增数据库迁移、API、认证或依赖变更；v0.2.0 的全站界面改版与 `0004`
+可空列迁移保持不变，安装架构与两种安装模式不变。
 
 **浏览器要求：** 新界面使用 `color-mix()`，需要 Chrome 111+、Safari 16.2+、
 Firefox 113+ 等现代浏览器。
+
+**上一稳定版本（回退目标）：**[v0.2.0 发行说明](https://github.com/laohiog/navlume/releases/tag/v0.2.0)
+及原附件继续有效；其运行源码为 `bf5de8ceb2bba07513c23ff5ac440468e76de0e1`，
+不可变镜像为
+`ghcr.io/laohiog/navlume@sha256:9a0bcedf9ae803d0ef2ec6d7b06e246bb217e8088ce47f44ee6ca95b0091cca2`。
+从 v0.2.1 回退只需要更换镜像，原数据卷、密钥与 Origin 不变，无需执行迁移。
 
 **历史版本：**[v0.1.3 发行说明](https://github.com/laohiog/navlume/releases/tag/v0.1.3)
 及原附件继续有效；其运行源码为 `361aaa6439ba16e3579d097629ac75fe2df4fc91`，
@@ -49,7 +55,7 @@ v0.1.1 支持标准网页初始化，但不支持 `INSTALL_MODE=lan-http`；不�
 ## 局域网 HTTP 快捷安装（绿联 UGOS Pro 等 Compose 环境）
 
 **全新实例**：`compose.lan.yml` 是可直接粘贴到 UGOS Pro Compose 项目的单文件配置，无需 `.env`、
-OpenSSL、SSH 或管理员 CLI。使用本包中的 `compose.lan.yml` 时，**发行页附件固定 v0.2.0 的
+OpenSSL、SSH 或管理员 CLI。使用本包中的 `compose.lan.yml` 时，**发行页附件固定 v0.2.1 的
 Digest**；仓库中的同名模板使用 `latest`。两者不要混用。
 建立全新项目和新卷，不复用或覆盖已有安装；
 已有实例按下方迁移说明先备份、核实原卷与原密钥。
@@ -130,7 +136,7 @@ mkdir -p ./backups
 docker compose -p "$OLD_PROJECT" -f "$OLD_COMPOSE" cp app:/data/backups/. ./backups/
 ```
 
-3. 使用当前单文件 `compose.lan.yml`（仓库模板为 `latest`；发行附件固定 v0.2.0 Digest），
+3. 使用当前单文件 `compose.lan.yml`（仓库模板为 `latest`；发行附件固定 v0.2.1 Digest），
    填写 NAS IP 和端口。
    在 app 的 `environment` 中加入以下一行，让原 `.env` 提供**同一个**密钥：
 
@@ -181,8 +187,8 @@ docker compose version
 默认 latest 安装使用当前源码工作区中的 `compose.install.yml` 和 `.env.install.example`，
 无需构建源码。不要与源码构建用的 `compose.yml` 混淆。
 
-需要发行页附件时，可从 v0.2.0 发行页面获取以下本版安装附件；v0.1.3 及更早版本的原附件
-继续在其发行页面提供。这些附件把镜像引用固定为 v0.2.0 的 Digest（标准模式在
+需要发行页附件时，可从 v0.2.1 发行页面获取以下本版安装附件；v0.2.0、v0.1.3 及更早版本的原附件
+继续在其发行页面提供。这些附件把镜像引用固定为 v0.2.1 的 Digest（标准模式在
 `default.env.install.example`，LAN 在 `compose.lan.yml`），**不跟随 `latest`**：
 
 - `compose.install.yml`
@@ -194,7 +200,7 @@ docker compose version
 放在独立目录 `navigation`。发行附件中的 `default.env.install.example` 需先
 改名为 `.env.install.example`。附件方式无需克隆仓库；直接使用本工作区时，
 取 `compose.install.yml`、`.env.install.example` 和 `docs/INSTALL.md`，原环境模板
-无需改名。也可从 [v0.2.0 源码压缩包](https://github.com/laohiog/navlume/archive/refs/tags/v0.2.0.zip)
+无需改名。也可从 [v0.2.1 源码压缩包](https://github.com/laohiog/navlume/archive/refs/tags/v0.2.1.zip)
 提取相同的源码安装文件；附件专用的身份记录和校验值以发行页面为准。
 源码压缩包内的模板仍使用 `latest`，发行附件才固定 Digest；需要让附件实例改为跟随
 稳定版时，按第 6 节在原项目中把镜像引用换成 `latest` 一次，其余配置保持不变。
@@ -306,7 +312,7 @@ curl http://localhost:3000/api/health
 
 ### CLI 备用方式（可选）
 
-v0.2.0 沿用 v0.1.x 的网页流程；需要时仍可使用 CLI。历史版本 v0.1.0
+v0.2.1 沿用 v0.1.x 的网页流程；需要时仍可使用 CLI。历史版本 v0.1.0
 没有网页初始化，创建首位管理员必须使用 CLI。
 
 在服务器/NAS 的 Bash 终端执行。先把示例邮箱和用户名改为自己的值：
@@ -410,7 +416,7 @@ docker compose -f compose.install.yml start app
 2. 继续使用原项目、原 `/data` 卷、原安装模式和端口。标准模式保留原认证密钥，
    LAN 保留 uploads 中的隐藏 `.auth-secret`。不要重新生成密钥或另建项目。
 3. 当前仓库模板已用 `latest`，后续稳定更新不必改版本。旧版安装或**发行页附件**
-   如果固定了 Digest（v0.2.0 发行附件即属此情形），想采用此方式时，需主动将 `.env`
+   如果固定了 Digest（v0.2.1 发行附件即属此情形），想采用此方式时，需主动将 `.env`
    的 NAV_IMAGE 或原 LAN 文件的 image 改为 `ghcr.io/laohiog/navlume:latest` 一次；
    原 external 卷定义及其他配置保持不变。
 4. 在原安装目录，用原文件、项目及环境设置拉取并重建。标准文件示例：
@@ -429,8 +435,21 @@ LAN 保持原 `-f compose.lan.yml`，使用过 `-p`、`--env-file` 或 NAS 项�
 回退时停止 app，将 image / NAV_IMAGE 改为升级前记录的兼容稳定 Digest，再按原项目、
 原卷、原 Origin 和原密钥执行 pull / up。默认不把旧备份覆盖到当前数据。未来版本若有
 迁移或兼容性限制，以该版发行说明为准；下方已验证的 v0.1.2 → v0.1.3 与
-v0.1.3 → v0.2.0 回退结论不扩展到任意未来版本。`latest` 不是回退地址，也不自动决定
+v0.1.3 → v0.2.0 回退结论不扩展到任意未来版本。v0.2.0 → v0.2.1 的依据是数据模型
+未变（见下节），本版未单独执行容器升级实测。`latest` 不是回退地址，也不自动决定
 数据库兼容性。
+
+### v0.2.0 → v0.2.1：只更换镜像（无迁移）
+
+v0.2.1 没有新增数据库迁移，也没有 API、认证或依赖变更；数据模型与 `0004` 之后的
+v0.2.0 完全一致。升级只需在原项目、原 `/data` 卷、原 Origin、原认证密钥下把
+`.env` 的 `NAV_IMAGE`（或 LAN Compose 的 `image`）改为 v0.2.1 Digest，然后执行
+`pull` 与 `up -d --no-build`。
+
+本版**没有在隔离环境重复执行容器升级实测**；依据是数据库结构与 v0.2.0 相同，
+变更仅限客户端资源与无障碍标记。回退时把镜像改回 v0.2.0 Digest
+（`sha256:9a0bcedf9ae803d0ef2ec6d7b06e246bb217e8088ce47f44ee6ca95b0091cca2`），
+同一数据卷直接可用，无需恢复备份或执行迁移。
 
 ### v0.1.3 → v0.2.0：只更换镜像（自动应用一条可空列迁移）
 
