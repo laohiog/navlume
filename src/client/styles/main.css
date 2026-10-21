@@ -1970,6 +1970,12 @@ textarea::placeholder {
  * Both reuse the existing theme tokens and the session-bar button language; no
  * new design system is introduced. The admin tabs wrap on narrow viewports
  * instead of scrolling horizontally, and no sidebar exists by design.
+ *
+ * `row`, not `row-reverse`: the controls must be laid out in the same order they
+ * are written, so the visual order and the reading order agree (audit F2). The
+ * personal-settings toolbar writes its title first (title left, back right); the
+ * admin toolbar writes the back control first and returns to a leading row at
+ * the sidebar breakpoint, where the back control belongs at the start.
  */
 .admin-management__toolbar,
 .personal-settings__toolbar {
@@ -1978,7 +1984,7 @@ textarea::placeholder {
   gap: 0.8rem 1rem;
   align-items: center;
   justify-content: space-between;
-  flex-direction: row-reverse;
+  flex-direction: row;
   margin-bottom: 0.75rem;
 }
 
@@ -2625,7 +2631,10 @@ textarea::placeholder {
 .app .site-header__tagline {
   margin-top: 0.15rem;
   font-size: 0.82rem;
-  color: var(--text-subtle);
+  /* 13.12px regular text needs 4.5:1. `--text-subtle` measured 4.49:1 here;
+     `--text-muted` clears AA (5.7:1 light, 7.94:1 dark) without changing the
+     type size or the brand direction (audit F4). */
+  color: var(--text-muted);
 }
 
 .app .site-header__logo {

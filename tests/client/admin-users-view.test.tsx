@@ -224,6 +224,21 @@ describe('AdminUsersView — actions', () => {
     expect(markup).toContain('删除');
   });
 
+  it('names each row action with the user it applies to (audit F3)', () => {
+    const markup = renderUsers(USERS);
+
+    // Visible labels repeat across rows, so the accessible name carries the row's
+    // own user — otherwise every "删除" button is indistinguishable.
+    expect(markup).toContain('aria-label="停用 userone"');
+    expect(markup).toContain('aria-label="重置密码 userone"');
+    expect(markup).toContain('aria-label="删除 userone"');
+    // A disabled account offers enable instead, with the same context.
+    expect(markup).toContain('aria-label="启用 usertwo"');
+    // No action may keep a bare, context-free name.
+    expect(markup).not.toContain('aria-label="删除"');
+    expect(markup).not.toContain('aria-label="停用"');
+  });
+
   it('does not offer disable or delete for the current admin account', () => {
     const markup = renderUsers(USERS);
     const selfSection = markup.slice(markup.indexOf('admin@example.com'), markup.indexOf('u1@example.com'));

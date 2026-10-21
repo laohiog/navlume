@@ -243,14 +243,32 @@ function UserRow({
       </div>
 
       <div className="user-row__controls">
+        {/*
+          Every action names its target. These controls repeat per row, so the
+          visible text alone gives a screen reader four identical "删除" buttons
+          with no way to tell which user each one deletes (audit F3). The visible
+          label stays as-is; the accessible name carries the row's own user.
+        */}
         {user.banned ? (
-          <button className="users__button" type="button" disabled={isBusy} onClick={onEnable}>
+          <button
+            className="users__button"
+            type="button"
+            disabled={isBusy}
+            aria-label={`启用 ${displayName}`}
+            onClick={onEnable}
+          >
             启用
           </button>
         ) : (
           // Self-disable is not offered; Better Auth also rejects it server-side.
           !isSelf && (
-            <button className="users__button" type="button" disabled={isBusy} onClick={onDisable}>
+            <button
+              className="users__button"
+              type="button"
+              disabled={isBusy}
+              aria-label={`停用 ${displayName}`}
+              onClick={onDisable}
+            >
               停用
             </button>
           )
@@ -259,6 +277,7 @@ function UserRow({
           className="users__button"
           type="button"
           disabled={isBusy}
+          aria-label={`${isResetting ? '取消重置' : '重置密码'} ${displayName}`}
           onClick={isResetting ? onCancelReset : onStartReset}
         >
           {isResetting ? '取消重置' : '重置密码'}
@@ -269,6 +288,7 @@ function UserRow({
             className="users__button users__button--danger"
             type="button"
             disabled={isBusy}
+            aria-label={`删除 ${displayName}`}
             onClick={onDelete}
           >
             删除

@@ -173,9 +173,17 @@ export function AdminManagementView({
             }}>
               返回导航
             </button>
-            {/* Current module name: the tab row is below the fold on long pages,
-                and at desktop the sidebar highlight is far from the content. */}
-            <h2 className="admin-management__title">{currentModule.label}</h2>
+            {/*
+              Current module name: the tab row is below the fold on long pages,
+              and at desktop the sidebar highlight is far from the content.
+
+              Deliberately **not** a heading. Each module renders its own `<h2>`
+              for the same section, so a second heading here put two identically
+              named entries in the heading outline (audit F1) — screen-reader
+              users navigating by heading could not tell which one owned the
+              content. The name stays visible and unchanged; only its role does.
+            */}
+            <p className="admin-management__title">{currentModule.label}</p>
           </div>
           {/* Only the selected module is rendered; the others stay unmounted. */}
           <div className="admin-management__module">{moduleViews[selected]}</div>

@@ -129,13 +129,19 @@ describe('AdminManagementView shell (T4.5)', () => {
     expect(markup.match(/退出登录/g) ?? []).toHaveLength(1);
   });
 
-  it('names the current module in the content area, matching the current entry', () => {
+  it('names the current module without adding a second heading (audit F1)', () => {
     const brandingMarkup = html('branding');
 
     expect(brandingMarkup).toContain('admin-management__title');
-    // Heading text, not a substring: the seam views carry module names too.
-    expect(brandingMarkup).toContain('>品牌设置</h2>');
-    expect(brandingMarkup).not.toContain('>公共导航</h2>');
+    // The label is visible but must not be a heading: each module already renders
+    // its own <h2> for the same section, and two identically named headings left
+    // heading navigation with no way to tell which one owned the content.
+    expect(brandingMarkup).toContain('>品牌设置</p>');
+    expect(brandingMarkup).not.toContain('>品牌设置</h2>');
+    // No second-level heading from the shell — the module views provide their own.
+    // (The shell's site-identity `h1` stays; this seam has no branding module.)
+    expect(brandingMarkup.match(/<h2[\s>]/g) ?? []).toHaveLength(0);
+    expect(brandingMarkup).not.toContain('>公共导航</p>');
   });
 });
 
